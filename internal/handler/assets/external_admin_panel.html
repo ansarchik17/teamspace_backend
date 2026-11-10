@@ -1,0 +1,1667 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin Panel | Team Workspace</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #edf2fb;
+      --surface: rgba(255, 255, 255, 0.9);
+      --surface-strong: #ffffff;
+      --surface-muted: #eef4ff;
+      --border: #d6e3f7;
+      --border-strong: #b7cbec;
+      --text: #152d4a;
+      --text-soft: #5d7594;
+      --text-faint: #88a0bf;
+      --accent: #2850f0;
+      --accent-deep: #1234b8;
+      --accent-soft: rgba(40, 80, 240, 0.1);
+      --danger: #d14a4a;
+      --danger-soft: rgba(209, 74, 74, 0.09);
+      --success: #17805d;
+      --success-soft: rgba(23, 128, 93, 0.1);
+      --shadow: 0 28px 80px rgba(17, 36, 72, 0.1);
+      --radius-xl: 28px;
+      --radius-lg: 20px;
+      --radius-md: 14px;
+      --sidebar-width: 292px;
+      font-family: "Segoe UI Variable Display", "Bahnschrift", "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top right, rgba(40, 80, 240, 0.14), transparent 26%),
+        radial-gradient(circle at bottom left, rgba(18, 52, 184, 0.12), transparent 28%),
+        linear-gradient(180deg, #f8fbff 0%, #edf2fb 100%);
+      color: var(--text);
+    }
+
+    button, input, select {
+      font: inherit;
+    }
+
+    .hidden { display: none !important; }
+    .app-shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: var(--sidebar-width) 1fr;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 28px 22px;
+      background:
+        radial-gradient(circle at top right, rgba(104, 136, 255, 0.24), transparent 24%),
+        linear-gradient(180deg, rgba(8, 28, 76, 0.98) 0%, rgba(9, 24, 58, 0.99) 100%);
+      color: #fff;
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-badge {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #5b81ff 0%, #2f4be2 100%);
+      box-shadow: 0 14px 30px rgba(47, 75, 226, 0.35);
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+    }
+
+    .brand-copy small {
+      display: block;
+      color: rgba(255, 255, 255, 0.54);
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      font-size: 10px;
+      margin-top: 4px;
+    }
+
+    .sidebar-card {
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.05));
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 22px;
+      padding: 18px;
+      backdrop-filter: blur(20px);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+
+    .sidebar-card h3 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+
+    .sidebar-card p, .sidebar-card li {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.72);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .sidebar-card ul {
+      margin: 0;
+      padding-left: 18px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      display: grid;
+      gap: 10px;
+    }
+
+    .nav-chip {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(45, 78, 226, 0.24), rgba(63, 98, 244, 0.12));
+      color: #fff;
+      border: 1px solid rgba(123, 150, 255, 0.26);
+      box-shadow: 0 16px 38px rgba(0, 0, 0, 0.12);
+    }
+
+    .main {
+      padding: 24px;
+      display: grid;
+      gap: 20px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px 22px;
+      border: 1px solid rgba(255,255,255,0.68);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.9), rgba(246,249,255,0.8));
+      backdrop-filter: blur(24px);
+      border-radius: var(--radius-xl);
+      box-shadow: 0 24px 70px rgba(17, 36, 72, 0.09);
+    }
+
+    .topbar h1 {
+      margin: 0;
+      font-size: 31px;
+      letter-spacing: -0.05em;
+    }
+
+    .topbar p {
+      margin: 6px 0 0;
+      color: var(--text-soft);
+      font-size: 14px;
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .surface {
+      background: var(--surface);
+      border: 1px solid rgba(255,255,255,0.55);
+      border-radius: var(--radius-xl);
+      backdrop-filter: blur(28px);
+      box-shadow: var(--shadow);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .surface::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 1px;
+      background: linear-gradient(90deg, rgba(255,255,255,0.7), rgba(40,80,240,0.14), rgba(255,255,255,0.7));
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(360px, 520px) minmax(420px, 1fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .panel {
+      padding: 22px;
+    }
+
+    .panel h2 {
+      margin: 0;
+      font-size: 20px;
+      letter-spacing: -0.03em;
+    }
+
+    .panel-subtitle {
+      margin: 8px 0 0;
+      color: var(--text-soft);
+      font-size: 14px;
+    }
+
+    .toolbar {
+      margin-top: 18px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .search {
+      flex: 1 1 220px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border: 1px solid rgba(205, 219, 244, 0.95);
+      background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(245,249,255,0.9));
+      border-radius: 18px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
+    }
+
+    .search input {
+      border: 0;
+      outline: 0;
+      background: transparent;
+      width: 100%;
+      color: var(--text);
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 18px;
+      padding: 12px 18px;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+      font-weight: 700;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
+      color: #fff;
+      box-shadow: 0 18px 34px rgba(40, 80, 240, 0.28);
+    }
+    .btn-secondary {
+      background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(245,248,255,0.9));
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-danger {
+      background: linear-gradient(180deg, rgba(255,244,244,0.96), rgba(255,238,238,0.9));
+      color: var(--danger);
+      border: 1px solid rgba(203, 63, 63, 0.16);
+    }
+
+    .stats {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .stat {
+      padding: 16px;
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(244,248,255,0.96), rgba(232,240,252,0.88));
+      border: 1px solid rgba(199, 216, 241, 0.9);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-faint);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .stat-value {
+      margin-top: 8px;
+      font-size: 34px;
+      font-weight: 700;
+      letter-spacing: -0.06em;
+    }
+
+    .users-list {
+      margin-top: 18px;
+      display: grid;
+      gap: 12px;
+      max-height: calc(100vh - 360px);
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .user-card {
+      padding: 16px;
+      border-radius: 22px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.8);
+      cursor: pointer;
+      transition: border-color 0.15s ease, transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .user-card:hover {
+      transform: translateY(-1px);
+      border-color: var(--border-strong);
+      box-shadow: 0 18px 36px rgba(19, 44, 88, 0.07);
+    }
+
+    .user-card.active {
+      border-color: rgba(47, 75, 226, 0.35);
+      background: linear-gradient(180deg, rgba(240,245,255,0.94), rgba(232,239,255,0.88));
+      box-shadow: inset 0 0 0 1px rgba(47, 75, 226, 0.1), 0 18px 32px rgba(40, 80, 240, 0.08);
+    }
+
+    .user-card-head, .detail-grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .user-card-head {
+      grid-template-columns: 1fr auto;
+      align-items: start;
+    }
+
+    .user-name {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .muted {
+      color: var(--text-soft);
+      font-size: 13px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .badge.active {
+      color: var(--success);
+      background: var(--success-soft);
+    }
+
+    .badge.inactive {
+      color: var(--danger);
+      background: var(--danger-soft);
+    }
+
+    .detail-empty {
+      padding: 72px 24px;
+      text-align: center;
+      color: var(--text-soft);
+      background: radial-gradient(circle at top, rgba(40,80,240,0.04), transparent 42%);
+    }
+
+    .form {
+      margin-top: 18px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+    }
+
+    .field label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-faint);
+      font-weight: 700;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      padding: 13px 14px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.92);
+      color: var(--text);
+      outline: none;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: rgba(47, 75, 226, 0.45);
+      box-shadow: 0 0 0 4px rgba(47, 75, 226, 0.08);
+    }
+
+    .field select:disabled {
+      background: rgba(238, 243, 251, 0.85);
+      color: var(--text-faint);
+      cursor: not-allowed;
+    }
+
+    .switch {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--surface-muted);
+    }
+
+    .switch input {
+      width: 18px;
+      height: 18px;
+    }
+
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .notice {
+      margin-top: 16px;
+      padding: 14px 16px;
+      border-radius: 18px;
+      border: 1px solid transparent;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .notice.info {
+      background: rgba(47, 75, 226, 0.08);
+      color: var(--accent-deep);
+      border-color: rgba(47, 75, 226, 0.14);
+    }
+
+    .notice.error {
+      background: var(--danger-soft);
+      color: var(--danger);
+      border-color: rgba(203, 63, 63, 0.16);
+    }
+
+    .notice.success {
+      background: var(--success-soft);
+      color: var(--success);
+      border-color: rgba(23, 128, 93, 0.16);
+    }
+
+    .login-shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: minmax(320px, 1.15fr) minmax(320px, 0.85fr);
+    }
+
+    .login-hero {
+      position: relative;
+      padding: 48px;
+      background:
+        linear-gradient(120deg, rgba(255,255,255,0.08) 18%, transparent 18%, transparent 54%, rgba(255,255,255,0.06) 54%, rgba(255,255,255,0.06) 66%, transparent 66%),
+        radial-gradient(circle at 20% 20%, rgba(108, 143, 255, 0.48), transparent 24%),
+        radial-gradient(circle at 78% 70%, rgba(25, 71, 224, 0.34), transparent 28%),
+        linear-gradient(145deg, #081d4b 0%, #0d2a68 46%, #133b82 100%);
+      color: #fff;
+      overflow: hidden;
+    }
+
+    .login-hero::before,
+    .login-hero::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.04);
+    }
+
+    .login-hero::before {
+      width: 420px;
+      height: 420px;
+      top: -120px;
+      right: -120px;
+    }
+
+    .login-hero::after {
+      width: 260px;
+      height: 260px;
+      left: -80px;
+      bottom: -80px;
+    }
+
+    .login-panel {
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .login-card {
+      width: min(520px, 100%);
+      padding: 40px;
+      border-radius: 30px;
+      border: 1px solid rgba(255,255,255,0.55);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.92), rgba(248,251,255,0.84));
+      backdrop-filter: blur(30px);
+      box-shadow: var(--shadow);
+    }
+
+    .login-card h1 {
+      margin: 0;
+      font-size: 38px;
+      letter-spacing: -0.04em;
+      line-height: 1.02;
+    }
+
+    .login-card p {
+      color: var(--text-soft);
+      line-height: 1.55;
+    }
+
+    .login-card .btn {
+      width: 100%;
+      justify-content: center;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(7, 17, 35, 0.32);
+      backdrop-filter: blur(10px);
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      z-index: 50;
+    }
+
+    .modal {
+      width: min(760px, 100%);
+      max-height: calc(100vh - 36px);
+      overflow: auto;
+      padding: 28px;
+      border-radius: 32px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(247,250,255,0.9));
+      border: 1px solid rgba(255,255,255,0.55);
+      box-shadow: var(--shadow);
+    }
+
+    .pagination {
+      margin-top: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--text-soft);
+      font-size: 13px;
+    }
+
+    .loading-ring {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: 4px solid rgba(47, 75, 226, 0.16);
+      border-top-color: var(--accent);
+      animation: spin 0.85s linear infinite;
+      margin: 0 auto 20px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 1140px) {
+      .app-shell { grid-template-columns: 1fr; }
+      .sidebar { position: static; height: auto; }
+      .content { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 860px) {
+      .login-shell { grid-template-columns: 1fr; }
+      .login-hero { min-height: 280px; }
+      .form-row, .stats { grid-template-columns: 1fr; }
+      .topbar { flex-direction: column; align-items: flex-start; }
+      .topbar-actions, .toolbar, .actions { width: 100%; }
+      .topbar-actions .btn, .toolbar .btn { flex: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div id="login-view" class="login-shell hidden">
+    <section class="login-hero">
+      <div class="brand">
+        <div class="brand-badge">T</div>
+        <div class="brand-copy">
+          <strong>Team Workspace</strong>
+          <small>External Admin Console</small>
+        </div>
+      </div>
+      <div style="position: relative; z-index: 1; margin-top: 68px; max-width: 580px;">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.2em; color: rgba(255,255,255,0.58);">Shared realm access</div>
+        <h2 style="margin: 16px 0 14px; font-size: 46px; line-height: 1.03; letter-spacing: -0.05em;">Отдельная админка для внешних администраторов</h2>
+        <p style="margin: 0; max-width: 500px; line-height: 1.75; color: rgba(255,255,255,0.78);">
+          Панель работает через отдельный Keycloak client, использует только разрешенные external-admin endpoints и не открывает основной backend-админский контур.
+        </p>
+      </div>
+    </section>
+
+    <section class="login-panel">
+      <div class="login-card">
+        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.18em; color: var(--accent); font-weight: 700;">Gov Workspace SSO</div>
+        <h1 style="margin-top: 12px;">Вход во внешнюю админку</h1>
+        <p>
+          Авторизация выполняется через выделенный Keycloak client. Только пользователи с ролью <strong>external_user_admin</strong> и корректным <strong>azp</strong> получат доступ к операциям управления пользователями.
+        </p>
+        <div id="login-notice" class="notice info hidden"></div>
+        <button id="login-button" class="btn btn-primary" style="margin-top: 10px;">Войти через Gov Workspace</button>
+      </div>
+    </section>
+  </div>
+
+  <div id="loading-view" class="login-panel hidden" style="min-height: 100vh;">
+    <div class="login-card" style="text-align: center;">
+      <div class="loading-ring"></div>
+      <h1 style="font-size: 28px;">Завершаем вход</h1>
+      <p id="loading-message">Проверяем сессию и поднимаем панель управления.</p>
+    </div>
+  </div>
+
+  <div id="app-view" class="app-shell hidden">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-badge">T</div>
+        <div class="brand-copy">
+          <strong>Team External Admin</strong>
+          <small>Scoped user management</small>
+        </div>
+      </div>
+
+      <div class="nav-chip">
+        <span style="font-size: 18px;">●</span>
+        <div>
+          <div style="font-weight: 700;">Users control desk</div>
+          <div style="font-size: 12px; color: rgba(255,255,255,0.65);">Регистрация, редактирование, сброс пароля</div>
+        </div>
+      </div>
+
+      <div class="sidebar-card">
+        <h3>Что умеет панель</h3>
+        <ul>
+          <li>создавать пользователей в разрешенном scope</li>
+          <li>редактировать базовые данные профиля</li>
+          <li>сбрасывать пароль и завершать активные сессии</li>
+        </ul>
+      </div>
+
+      <div class="sidebar-card">
+        <h3>Ограничения</h3>
+        <p>Роль, глобальные права и доступ к закрытым admin endpoints через эту панель не выдаются и не меняются.</p>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-card">
+          <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.18em; color: rgba(255,255,255,0.5);">Current operator</div>
+          <div id="sidebar-user-name" style="margin-top: 8px; font-size: 16px; font-weight: 700;">-</div>
+          <div id="sidebar-user-email" style="margin-top: 4px; font-size: 13px; color: rgba(255,255,255,0.7);">-</div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section class="topbar">
+        <div>
+          <h1>External Admin Panel</h1>
+          <p>Управление пользователями другой команды через изолированный контур доступа.</p>
+        </div>
+        <div class="topbar-actions">
+          <button id="refresh-button" class="btn btn-secondary">Обновить</button>
+          <button id="logout-button" class="btn btn-danger">Выйти</button>
+        </div>
+      </section>
+
+      <div id="global-notice" class="notice info hidden"></div>
+
+      <section class="content">
+        <div class="surface panel">
+          <h2>Пользователи</h2>
+          <p class="panel-subtitle">Поиск и быстрый доступ к разрешенным учетным записям.</p>
+
+          <div class="toolbar">
+            <div class="search">
+              <span style="color: var(--text-faint);">⌕</span>
+              <input id="search-input" type="search" placeholder="Поиск по имени, email, username, ИИН">
+            </div>
+            <button id="search-button" class="btn btn-secondary">Найти</button>
+            <button id="create-button" class="btn btn-primary">Создать пользователя</button>
+          </div>
+
+          <div class="stats">
+            <div class="stat">
+              <div class="stat-label">На странице</div>
+              <div id="stat-total" class="stat-value">0</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Активные на странице</div>
+              <div id="stat-active" class="stat-value">0</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Первый вход на странице</div>
+              <div id="stat-first-login" class="stat-value">0</div>
+            </div>
+          </div>
+
+          <div id="users-list" class="users-list"></div>
+
+          <div class="pagination">
+            <span id="pagination-label">Страница 1</span>
+            <div class="actions">
+              <button id="prev-page" class="btn btn-secondary">Назад</button>
+              <button id="next-page" class="btn btn-secondary">Вперед</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="surface panel">
+          <div id="details-empty" class="detail-empty">
+            <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">Выберите пользователя</div>
+            <div>Карточка справа покажет профиль, scope и действия: обновление, сброс пароля и logout all.</div>
+          </div>
+
+          <div id="details-view" class="hidden">
+            <div style="display: flex; align-items: start; justify-content: space-between; gap: 12px;">
+              <div>
+                <h2 id="details-title">Профиль пользователя</h2>
+                <p id="details-subtitle" class="panel-subtitle">-</p>
+              </div>
+              <span id="details-status" class="badge active">Активен</span>
+            </div>
+
+            <div class="form">
+              <div class="form-row">
+                <div class="field">
+                  <label for="detail-first-name">Имя</label>
+                  <input id="detail-first-name" type="text">
+                </div>
+                <div class="field">
+                  <label for="detail-last-name">Фамилия</label>
+                  <input id="detail-last-name" type="text">
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="field">
+                  <label for="detail-email">Email</label>
+                  <input id="detail-email" type="email">
+                </div>
+                <div class="field">
+                  <label for="detail-username">Username</label>
+                  <input id="detail-username" type="text">
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="field">
+                  <label for="detail-iin">ИИН</label>
+                  <input id="detail-iin" type="text" maxlength="12">
+                </div>
+                <div class="field">
+                  <label for="detail-position">Должность</label>
+                  <input id="detail-position" type="text">
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="field">
+                  <label for="detail-ministry-id">Министерство</label>
+                  <select id="detail-ministry-id"></select>
+                </div>
+                <div class="field">
+                  <label for="detail-state-body-id">Госорган</label>
+                  <select id="detail-state-body-id"></select>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="field">
+                  <label for="detail-department-id">Департамент</label>
+                  <select id="detail-department-id"></select>
+                </div>
+                <div class="field">
+                  <label for="detail-division-id">Управление</label>
+                  <select id="detail-division-id"></select>
+                </div>
+              </div>
+
+              <div class="switch">
+                <div>
+                  <div style="font-weight: 700;">Пользователь активен</div>
+                  <div class="muted">Отключенный пользователь не сможет нормально использовать продукт.</div>
+                </div>
+                <input id="detail-is-active" type="checkbox">
+              </div>
+
+              <div class="switch">
+                <div>
+                  <div style="font-weight: 700;">Требуется смена пароля</div>
+                  <div class="muted">Текущее значение приходит из профиля. Меняется через reset password.</div>
+                </div>
+                <input id="detail-is-first-login" type="checkbox" disabled>
+              </div>
+
+              <div class="actions">
+                <button id="save-button" class="btn btn-primary">Сохранить изменения</button>
+                <button id="reset-password-button" class="btn btn-secondary">Сбросить пароль</button>
+                <button id="logout-all-button" class="btn btn-danger">Завершить все сессии</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="create-modal" class="modal-backdrop hidden">
+    <div class="modal">
+      <div style="display: flex; align-items: start; justify-content: space-between; gap: 16px;">
+        <div>
+          <h2 style="margin: 0;">Создать пользователя</h2>
+          <p class="panel-subtitle">Внешний администратор создает пользователя только в разрешенном scope.</p>
+        </div>
+        <button data-close-modal="create-modal" class="btn btn-secondary">Закрыть</button>
+      </div>
+
+      <div class="form">
+        <div class="form-row">
+          <div class="field">
+            <label for="create-first-name">Имя</label>
+            <input id="create-first-name" type="text">
+          </div>
+          <div class="field">
+            <label for="create-last-name">Фамилия</label>
+            <input id="create-last-name" type="text">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label for="create-email">Email</label>
+            <input id="create-email" type="email">
+          </div>
+          <div class="field">
+            <label for="create-username">Username</label>
+            <input id="create-username" type="text">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label for="create-password">Пароль</label>
+            <input id="create-password" type="password">
+          </div>
+          <div class="field">
+            <label for="create-iin">ИИН</label>
+            <input id="create-iin" type="text" maxlength="12">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label for="create-position">Должность</label>
+            <input id="create-position" type="text">
+          </div>
+          <div class="field">
+            <label for="create-ministry-id">Министерство</label>
+            <select id="create-ministry-id"></select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label for="create-state-body-id">Госорган</label>
+            <select id="create-state-body-id"></select>
+          </div>
+          <div class="field">
+            <label for="create-department-id">Департамент</label>
+            <select id="create-department-id"></select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label for="create-division-id">Управление</label>
+            <select id="create-division-id"></select>
+          </div>
+          <div class="field">
+            <label for="create-role">Роль</label>
+            <input id="create-role" type="text" value="user" disabled>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="submit-create-button" class="btn btn-primary">Создать</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="reset-modal" class="modal-backdrop hidden">
+    <div class="modal" style="width: min(520px, 100%);">
+      <div style="display: flex; align-items: start; justify-content: space-between; gap: 16px;">
+        <div>
+          <h2 style="margin: 0;">Сброс пароля</h2>
+          <p class="panel-subtitle">Новый пароль будет установлен в Keycloak для выбранного пользователя.</p>
+        </div>
+        <button data-close-modal="reset-modal" class="btn btn-secondary">Закрыть</button>
+      </div>
+
+      <div class="form">
+        <div class="field">
+          <label for="reset-password-input">Новый пароль</label>
+          <input id="reset-password-input" type="password">
+        </div>
+
+        <div class="switch">
+          <div>
+            <div style="font-weight: 700;">Завершить все сессии</div>
+            <div class="muted">Рекомендуется после reset password.</div>
+          </div>
+          <input id="reset-logout-all" type="checkbox" checked>
+        </div>
+
+        <div class="actions">
+          <button id="submit-reset-button" class="btn btn-primary">Сбросить пароль</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const state = {
+      me: null,
+      users: [],
+      selectedUserId: null,
+      selectedUserDetails: null,
+      hierarchy: null,
+      query: '',
+      limit: 20,
+      offset: 0,
+    };
+
+    const ui = {
+      loginView: document.getElementById('login-view'),
+      loadingView: document.getElementById('loading-view'),
+      appView: document.getElementById('app-view'),
+      loginNotice: document.getElementById('login-notice'),
+      loadingMessage: document.getElementById('loading-message'),
+      globalNotice: document.getElementById('global-notice'),
+      usersList: document.getElementById('users-list'),
+      statTotal: document.getElementById('stat-total'),
+      statActive: document.getElementById('stat-active'),
+      statFirstLogin: document.getElementById('stat-first-login'),
+      paginationLabel: document.getElementById('pagination-label'),
+      detailsEmpty: document.getElementById('details-empty'),
+      detailsView: document.getElementById('details-view'),
+      detailsTitle: document.getElementById('details-title'),
+      detailsSubtitle: document.getElementById('details-subtitle'),
+      detailsStatus: document.getElementById('details-status'),
+      sidebarUserName: document.getElementById('sidebar-user-name'),
+      sidebarUserEmail: document.getElementById('sidebar-user-email'),
+      searchInput: document.getElementById('search-input'),
+    };
+
+    function applyPresentationCopy() {
+      document.title = 'Admin Panel | Team Workspace';
+
+      const setText = (selector, text) => {
+        const node = document.querySelector(selector);
+        if (node) node.textContent = text;
+      };
+
+      const setHTML = (selector, html) => {
+        const node = document.querySelector(selector);
+        if (node) node.innerHTML = html;
+      };
+
+      setText('#login-view .brand-copy strong', 'Admin Panel');
+      setText('#login-view .brand-copy small', 'Team Workspace');
+      setText('#login-view .login-hero div[style*="letter-spacing: 0.2em"]', 'Team Workspace');
+      setHTML('#login-view .login-hero h2', 'Admin<br>Panel');
+      setText('#login-view .login-hero p', 'Чистое и быстрое пространство управления пользователями.');
+      setText('#login-view .login-card h1', 'Авторизация');
+      setText('#login-view .login-card p', 'Вход через Gov Workspace.');
+      setText('#login-button', 'Войти через Gov Workspace');
+      document.getElementById('login-button')?.style.setProperty('margin-top', '18px');
+
+      setText('#loading-message', 'Подготавливаем панель.');
+
+      setText('#app-view .brand-copy strong', 'Admin Panel');
+      setText('#app-view .brand-copy small', 'Team Workspace');
+      const navChipLines = document.querySelectorAll('#app-view .nav-chip > div > div');
+      if (navChipLines[0]) navChipLines[0].textContent = 'User management';
+      if (navChipLines[1]) navChipLines[1].textContent = 'Создание, редактирование, доступ';
+
+      const appSidebarCards = document.querySelectorAll('#app-view > .sidebar > .sidebar-card');
+      if (appSidebarCards[0]) {
+        appSidebarCards[0].innerHTML = '<h3>Инструменты</h3><p>Профиль, пароль, статус, сессии.</p>';
+      }
+      if (appSidebarCards[1]) {
+        appSidebarCards[1].innerHTML = '<h3>Контур</h3><p>Только доступные пользователи и подразделения.</p>';
+      }
+
+      setText('#app-view .topbar h1', 'Admin Panel');
+      setText('#app-view .topbar p', 'Управление пользователями');
+      const listPanelSubtitle = document.querySelector('#app-view .content .surface.panel .panel-subtitle');
+      if (listPanelSubtitle) {
+        listPanelSubtitle.textContent = 'Поиск и управление в одном окне.';
+      }
+
+      const detailsEmptyTitle = document.querySelector('#details-empty > div:first-child');
+      const detailsEmptyText = document.querySelector('#details-empty > div:last-child');
+      if (detailsEmptyTitle) detailsEmptyTitle.textContent = 'Выберите пользователя';
+      if (detailsEmptyText) detailsEmptyText.textContent = 'Профиль и действия откроются справа.';
+
+      const createModalSubtitle = document.querySelector('#create-modal .panel-subtitle');
+      if (createModalSubtitle) {
+        createModalSubtitle.textContent = 'Создание пользователя в разрешённом контуре.';
+      }
+    }
+
+    function showView(name) {
+      ui.loginView.classList.add('hidden');
+      ui.loadingView.classList.add('hidden');
+      ui.appView.classList.add('hidden');
+      if (name === 'login') ui.loginView.classList.remove('hidden');
+      if (name === 'loading') ui.loadingView.classList.remove('hidden');
+      if (name === 'app') ui.appView.classList.remove('hidden');
+    }
+
+    function setNotice(target, kind, message) {
+      if (!message) {
+        target.className = 'notice hidden';
+        target.textContent = '';
+        return;
+      }
+      target.className = 'notice ' + kind;
+      target.textContent = message;
+    }
+
+    function parseJSONSafely(text) {
+      try { return JSON.parse(text); } catch { return null; }
+    }
+
+    function extractErrorMessage(payload, fallback) {
+      if (!payload) return fallback;
+      return payload.error?.user_message || payload.error?.message || payload.message || fallback;
+    }
+
+    async function apiFetch(path, options = {}) {
+      const response = await fetch(path, {
+        credentials: 'include',
+        headers: {
+          Accept: 'application/json',
+          ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+          ...(options.headers || {}),
+        },
+        ...options,
+      });
+
+      if (response.status === 401) {
+        throw new Error('Необходима авторизация во внешней админке.');
+      }
+
+      if (!response.ok) {
+        const payload = parseJSONSafely(await response.text());
+        throw new Error(extractErrorMessage(payload, 'Не удалось выполнить запрос.'));
+      }
+
+      if (response.status === 204) return null;
+      return parseJSONSafely(await response.text());
+    }
+
+    function getRedirectTarget() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('redirect') || '/external-admin/';
+    }
+
+    async function hydrateFromCookies() {
+      const response = await fetch('/api/v1/auth/refresh', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+      });
+
+      if (!response.ok) {
+        throw new Error('Не удалось восстановить сессию из cookie.');
+      }
+    }
+
+    function nullableString(value) {
+      return value == null ? '' : String(value);
+    }
+
+    function parseOptionalInt(value) {
+      const raw = String(value || '').trim();
+      if (!raw) return null;
+      const parsed = Number(raw);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+    }
+
+    function fillInput(id, value) {
+      const el = document.getElementById(id);
+      if (el) el.value = nullableString(value);
+    }
+
+    function setSelectValue(id, value) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const normalized = value == null ? '' : String(value);
+      if ([...el.options].some((option) => option.value === normalized)) {
+        el.value = normalized;
+        return;
+      }
+      el.value = '';
+    }
+
+    function getSelectIntValue(id) {
+      return parseOptionalInt(document.getElementById(id)?.value);
+    }
+
+    function pushUnique(list, item) {
+      if (!item || !Number.isFinite(Number(item.id))) return;
+      if (!list.some((existing) => Number(existing.id) === Number(item.id))) {
+        list.push({ id: Number(item.id), name: item.name || ('ID ' + item.id) });
+      }
+    }
+
+    function sortByName(list) {
+      return list.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'ru'));
+    }
+
+    function buildHierarchyIndex(tree) {
+      const index = {
+        ministries: [],
+        stateBodiesByMinistry: {},
+        departmentsByStateBody: {},
+        divisionsByDepartment: {},
+        divisionsByStateBody: {},
+      };
+
+      const ministries = Array.isArray(tree) ? tree : [];
+      ministries.forEach((ministry) => {
+        if (ministry?.type !== 'ministry') return;
+        const ministryId = Number(ministry.id);
+        pushUnique(index.ministries, ministry);
+        index.stateBodiesByMinistry[ministryId] = index.stateBodiesByMinistry[ministryId] || [];
+
+        (Array.isArray(ministry.children) ? ministry.children : []).forEach((stateBody) => {
+          if (stateBody?.type !== 'state_body') return;
+          const stateBodyId = Number(stateBody.id);
+          pushUnique(index.stateBodiesByMinistry[ministryId], stateBody);
+          index.departmentsByStateBody[stateBodyId] = index.departmentsByStateBody[stateBodyId] || [];
+          index.divisionsByStateBody[stateBodyId] = index.divisionsByStateBody[stateBodyId] || [];
+
+          (Array.isArray(stateBody.children) ? stateBody.children : []).forEach((child) => {
+            if (child?.type === 'department') {
+              const departmentId = Number(child.id);
+              pushUnique(index.departmentsByStateBody[stateBodyId], child);
+              index.divisionsByDepartment[departmentId] = index.divisionsByDepartment[departmentId] || [];
+
+              (Array.isArray(child.children) ? child.children : []).forEach((division) => {
+                if (division?.type !== 'division') return;
+                pushUnique(index.divisionsByDepartment[departmentId], division);
+              });
+
+              sortByName(index.divisionsByDepartment[departmentId]);
+              return;
+            }
+
+            if (child?.type === 'division') {
+              pushUnique(index.divisionsByStateBody[stateBodyId], child);
+            }
+          });
+
+          sortByName(index.departmentsByStateBody[stateBodyId]);
+          sortByName(index.divisionsByStateBody[stateBodyId]);
+        });
+
+        sortByName(index.stateBodiesByMinistry[ministryId]);
+      });
+
+      sortByName(index.ministries);
+      return index;
+    }
+
+    async function loadHierarchy() {
+      const payload = await apiFetch('/api/v1/hierarchy/public/tree');
+      state.hierarchy = buildHierarchyIndex(payload?.tree || []);
+    }
+
+    function selectOptionsMarkup(items, emptyLabel) {
+      const options = ['<option value="">' + escapeHtml(emptyLabel) + '</option>'];
+      items.forEach((item) => {
+        options.push('<option value="' + Number(item.id) + '">' + escapeHtml(item.name || ('ID ' + item.id)) + '</option>');
+      });
+      return options.join('');
+    }
+
+    function fillSelect(id, items, emptyLabel, selectedValue, disabled) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.innerHTML = selectOptionsMarkup(items, emptyLabel);
+      el.disabled = Boolean(disabled);
+      setSelectValue(id, selectedValue);
+    }
+
+    function availableMinistries() {
+      return state.hierarchy?.ministries || [];
+    }
+
+    function syncHierarchyControls(prefix, selected = {}) {
+      const hierarchy = state.hierarchy;
+      if (!hierarchy) return;
+
+      const ministryId = selected.ministryId ?? getSelectIntValue(prefix + '-ministry-id');
+      const ministries = availableMinistries();
+      fillSelect(prefix + '-ministry-id', ministries, 'Выберите министерство', ministryId, false);
+      const resolvedMinistryId = getSelectIntValue(prefix + '-ministry-id');
+
+      const stateBodies = resolvedMinistryId ? (hierarchy.stateBodiesByMinistry[resolvedMinistryId] || []) : [];
+      fillSelect(prefix + '-state-body-id', stateBodies, 'Выберите госорган', selected.stateBodyId, stateBodies.length === 0);
+      const resolvedStateBodyId = getSelectIntValue(prefix + '-state-body-id');
+
+      const departments = resolvedStateBodyId ? (hierarchy.departmentsByStateBody[resolvedStateBodyId] || []) : [];
+      fillSelect(prefix + '-department-id', departments, 'Выберите департамент', selected.departmentId, departments.length === 0);
+      const resolvedDepartmentId = getSelectIntValue(prefix + '-department-id');
+
+      let divisions = [];
+      if (resolvedDepartmentId) {
+        divisions = hierarchy.divisionsByDepartment[resolvedDepartmentId] || [];
+      } else if (resolvedStateBodyId) {
+        divisions = hierarchy.divisionsByStateBody[resolvedStateBodyId] || [];
+      }
+      fillSelect(prefix + '-division-id', divisions, 'Выберите управление', selected.divisionId, divisions.length === 0);
+    }
+
+    function wireHierarchyControls(prefix) {
+      const ministry = document.getElementById(prefix + '-ministry-id');
+      const stateBody = document.getElementById(prefix + '-state-body-id');
+      const department = document.getElementById(prefix + '-department-id');
+      if (ministry) {
+        ministry.addEventListener('change', () => syncHierarchyControls(prefix, { ministryId: getSelectIntValue(prefix + '-ministry-id') }));
+      }
+      if (stateBody) {
+        stateBody.addEventListener('change', () => syncHierarchyControls(prefix, {
+          ministryId: getSelectIntValue(prefix + '-ministry-id'),
+          stateBodyId: getSelectIntValue(prefix + '-state-body-id'),
+        }));
+      }
+      if (department) {
+        department.addEventListener('change', () => syncHierarchyControls(prefix, {
+          ministryId: getSelectIntValue(prefix + '-ministry-id'),
+          stateBodyId: getSelectIntValue(prefix + '-state-body-id'),
+          departmentId: getSelectIntValue(prefix + '-department-id'),
+        }));
+      }
+    }
+
+    function renderStats() {
+      ui.statTotal.textContent = String(state.users.length);
+      ui.statActive.textContent = String(state.users.filter((user) => user.is_active).length);
+      ui.statFirstLogin.textContent = String(state.users.filter((user) => user.is_first_login).length);
+      const currentPage = Math.floor(state.offset / state.limit) + 1;
+      ui.paginationLabel.textContent = 'Страница ' + currentPage;
+    }
+
+    function renderUsers() {
+      renderStats();
+      if (!state.users.length) {
+        ui.usersList.innerHTML = '<div class="detail-empty" style="padding: 36px 18px;">Пользователи по текущему фильтру не найдены.</div>';
+        return;
+      }
+
+      ui.usersList.innerHTML = state.users.map((user) => {
+        const activeClass = state.selectedUserId === user.id ? ' active' : '';
+        const statusClass = user.is_active ? 'active' : 'inactive';
+        const statusText = user.is_active ? 'Активен' : 'Отключен';
+        const subtitle = [user.email, user.username, user.position || user.job_name || '']
+          .filter(Boolean)
+          .join(' · ');
+
+        return `
+          <article class="user-card${activeClass}" data-user-id="${user.id}">
+            <div class="user-card-head">
+              <div>
+                <h3 class="user-name">${escapeHtml(user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Без имени')}</h3>
+                <div class="muted">${escapeHtml(subtitle || 'Без контактных данных')}</div>
+              </div>
+              <span class="badge ${statusClass}">${statusText}</span>
+            </div>
+            <div class="muted">ID ${user.id}${user.iin ? ' · ИИН ' + escapeHtml(user.iin) : ''}</div>
+          </article>
+        `;
+      }).join('');
+
+      ui.usersList.querySelectorAll('[data-user-id]').forEach((card) => {
+        card.addEventListener('click', () => {
+          const userId = Number(card.getAttribute('data-user-id'));
+          if (Number.isFinite(userId)) {
+            loadUserDetails(userId).catch((error) => setNotice(ui.globalNotice, 'error', error.message));
+          }
+        });
+      });
+    }
+
+    function renderDetails() {
+      if (!state.selectedUserDetails) {
+        ui.detailsEmpty.classList.remove('hidden');
+        ui.detailsView.classList.add('hidden');
+        return;
+      }
+
+      const detail = state.selectedUserDetails;
+      const user = detail.user || detail;
+      ui.detailsEmpty.classList.add('hidden');
+      ui.detailsView.classList.remove('hidden');
+      ui.detailsTitle.textContent = user.full_name || [user.first_name, user.last_name].filter(Boolean).join(' ') || 'Пользователь';
+      ui.detailsSubtitle.textContent = [user.email, user.username, user.organization_name || '', user.department_name || '']
+        .filter(Boolean)
+        .join(' · ');
+      ui.detailsStatus.className = 'badge ' + (user.is_active ? 'active' : 'inactive');
+      ui.detailsStatus.textContent = user.is_active ? 'Активен' : 'Отключен';
+
+      fillInput('detail-first-name', user.first_name);
+      fillInput('detail-last-name', user.last_name);
+      fillInput('detail-email', user.email);
+      fillInput('detail-username', user.username);
+      fillInput('detail-iin', user.iin);
+      fillInput('detail-position', user.position || user.job_name || '');
+      syncHierarchyControls('detail', {
+        ministryId: user.ministry_id,
+        stateBodyId: user.state_body_id,
+        departmentId: user.department_id,
+        divisionId: user.division_id,
+      });
+      document.getElementById('detail-is-active').checked = Boolean(user.is_active);
+      document.getElementById('detail-is-first-login').checked = Boolean(user.is_first_login);
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    async function loadMe() {
+      state.me = await apiFetch('/api/v1/auth/me');
+      ui.sidebarUserName.textContent = state.me?.full_name || [state.me?.first_name, state.me?.last_name].filter(Boolean).join(' ') || 'Operator';
+      ui.sidebarUserEmail.textContent = state.me?.email || '-';
+      if (state.hierarchy) {
+        syncHierarchyControls('create', { ministryId: state.me?.ministry_id || null });
+      }
+    }
+
+    async function loadUsers() {
+      const params = new URLSearchParams();
+      if (state.query.trim()) params.set('q', state.query.trim());
+      params.set('limit', String(state.limit));
+      params.set('offset', String(state.offset));
+      const payload = await apiFetch('/api/v1/external-admin/users?' + params.toString());
+      state.users = Array.isArray(payload?.users) ? payload.users : [];
+      if (state.selectedUserId && !state.users.some((user) => user.id === state.selectedUserId)) {
+        state.selectedUserId = null;
+        state.selectedUserDetails = null;
+      }
+      renderUsers();
+      renderDetails();
+    }
+
+    async function loadUserDetails(userId) {
+      state.selectedUserId = userId;
+      state.selectedUserDetails = await apiFetch('/api/v1/external-admin/users/' + userId);
+      renderUsers();
+      renderDetails();
+    }
+
+    function openModal(id) {
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    function buildUpdatePayload() {
+      return {
+        first_name: document.getElementById('detail-first-name').value.trim() || null,
+        last_name: document.getElementById('detail-last-name').value.trim() || null,
+        email: document.getElementById('detail-email').value.trim() || null,
+        username: document.getElementById('detail-username').value.trim() || null,
+        iin: document.getElementById('detail-iin').value.trim() || null,
+        position: document.getElementById('detail-position').value.trim() || null,
+        ministry_id: getSelectIntValue('detail-ministry-id'),
+        state_body_id: getSelectIntValue('detail-state-body-id'),
+        department_id: getSelectIntValue('detail-department-id'),
+        division_id: getSelectIntValue('detail-division-id'),
+        is_active: document.getElementById('detail-is-active').checked,
+      };
+    }
+
+    function buildCreatePayload() {
+      return {
+        first_name: document.getElementById('create-first-name').value.trim(),
+        last_name: document.getElementById('create-last-name').value.trim(),
+        email: document.getElementById('create-email').value.trim(),
+        username: document.getElementById('create-username').value.trim(),
+        password: document.getElementById('create-password').value,
+        iin: document.getElementById('create-iin').value.trim(),
+        position: document.getElementById('create-position').value.trim(),
+        ministry_id: getSelectIntValue('create-ministry-id'),
+        state_body_id: getSelectIntValue('create-state-body-id'),
+        department_id: getSelectIntValue('create-department-id'),
+        division_id: getSelectIntValue('create-division-id'),
+        role: 'user',
+      };
+    }
+
+    function resetCreateForm() {
+      [
+        'create-first-name',
+        'create-last-name',
+        'create-email',
+        'create-username',
+        'create-password',
+        'create-iin',
+        'create-position',
+      ].forEach((id) => fillInput(id, ''));
+
+      syncHierarchyControls('create', { ministryId: state.me?.ministry_id || null });
+    }
+
+    async function saveSelectedUser() {
+      if (!state.selectedUserId) return;
+      const payload = buildUpdatePayload();
+      await apiFetch('/api/v1/external-admin/users/' + state.selectedUserId, {
+        method: 'PATCH',
+        body: JSON.stringify(payload),
+      });
+      setNotice(ui.globalNotice, 'success', 'Профиль пользователя обновлен.');
+      await loadUsers();
+      await loadUserDetails(state.selectedUserId);
+    }
+
+    async function createUser() {
+      const payload = buildCreatePayload();
+      const user = await apiFetch('/api/v1/external-admin/users', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      closeModal('create-modal');
+      resetCreateForm();
+      setNotice(ui.globalNotice, 'success', 'Пользователь создан.');
+      state.offset = 0;
+      await loadUsers();
+      if (user?.id) {
+        await loadUserDetails(user.id);
+      }
+    }
+
+    async function resetPassword() {
+      if (!state.selectedUserId) return;
+      const password = document.getElementById('reset-password-input').value;
+      const logoutAll = document.getElementById('reset-logout-all').checked;
+      await apiFetch('/api/v1/external-admin/users/' + state.selectedUserId + '/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({ password, logout_all: logoutAll }),
+      });
+      closeModal('reset-modal');
+      document.getElementById('reset-password-input').value = '';
+      setNotice(ui.globalNotice, 'success', 'Пароль пользователя сброшен.');
+      await loadUserDetails(state.selectedUserId);
+      await loadUsers();
+    }
+
+    async function logoutAllSessions() {
+      if (!state.selectedUserId) return;
+      await apiFetch('/api/v1/external-admin/users/' + state.selectedUserId + '/logout-all', {
+        method: 'POST',
+      });
+      setNotice(ui.globalNotice, 'success', 'Все активные сессии пользователя завершены.');
+    }
+
+    async function bootstrapApp() {
+      await loadMe();
+      await loadHierarchy();
+      syncHierarchyControls('create', { ministryId: state.me?.ministry_id || null });
+      syncHierarchyControls('detail', {});
+      await loadUsers();
+      showView('app');
+    }
+
+    function wireEvents() {
+      wireHierarchyControls('create');
+      wireHierarchyControls('detail');
+
+      document.getElementById('login-button').addEventListener('click', () => {
+        window.location.href = '/api/v1/external-admin/auth/keycloak/login?redirect=' + encodeURIComponent(getRedirectTarget());
+      });
+
+      document.getElementById('logout-button').addEventListener('click', () => {
+        window.location.href = '/api/v1/external-admin/auth/keycloak/logout';
+      });
+
+      document.getElementById('refresh-button').addEventListener('click', () => {
+        bootstrapApp().catch((error) => setNotice(ui.globalNotice, 'error', error.message));
+      });
+
+      document.getElementById('search-button').addEventListener('click', async () => {
+        state.query = ui.searchInput.value;
+        state.offset = 0;
+        try {
+          await loadUsers();
+        } catch (error) {
+          setNotice(ui.globalNotice, 'error', error.message);
+        }
+      });
+
+      ui.searchInput.addEventListener('keydown', async (event) => {
+        if (event.key === 'Enter') {
+          state.query = ui.searchInput.value;
+          state.offset = 0;
+          try {
+            await loadUsers();
+          } catch (error) {
+            setNotice(ui.globalNotice, 'error', error.message);
+          }
+        }
+      });
+
+      document.getElementById('create-button').addEventListener('click', () => {
+        resetCreateForm();
+        openModal('create-modal');
+      });
+      document.getElementById('submit-create-button').addEventListener('click', () => {
+        createUser().catch((error) => setNotice(ui.globalNotice, 'error', error.message));
+      });
+
+      document.getElementById('save-button').addEventListener('click', () => {
+        saveSelectedUser().catch((error) => setNotice(ui.globalNotice, 'error', error.message));
+      });
+
+      document.getElementById('reset-password-button').addEventListener('click', () => openModal('reset-modal'));
+      document.getElementById('submit-reset-button').addEventListener('click', () => {
+        resetPassword().catch((error) => setNotice(ui.globalNotice, 'error', error.message));
+      });
+
+      document.getElementById('logout-all-button').addEventListener('click', () => {
+        logoutAllSessions().catch((error) => setNotice(ui.globalNotice, 'error', error.message));
+      });
+
+      document.getElementById('prev-page').addEventListener('click', async () => {
+        if (state.offset === 0) return;
+        state.offset = Math.max(0, state.offset - state.limit);
+        try {
+          await loadUsers();
+        } catch (error) {
+          setNotice(ui.globalNotice, 'error', error.message);
+        }
+      });
+
+      document.getElementById('next-page').addEventListener('click', async () => {
+        if (state.users.length < state.limit) return;
+        state.offset += state.limit;
+        try {
+          await loadUsers();
+        } catch (error) {
+          setNotice(ui.globalNotice, 'error', error.message);
+        }
+      });
+
+      document.querySelectorAll('[data-close-modal]').forEach((button) => {
+        button.addEventListener('click', () => closeModal(button.getAttribute('data-close-modal')));
+      });
+
+      document.querySelectorAll('.modal-backdrop').forEach((backdrop) => {
+        backdrop.addEventListener('click', (event) => {
+          if (event.target === backdrop) {
+            backdrop.classList.add('hidden');
+          }
+        });
+      });
+    }
+
+    async function main() {
+      applyPresentationCopy();
+      wireEvents();
+      const path = window.location.pathname.replace(/\/+$/, '') || '/';
+      const params = new URLSearchParams(window.location.search);
+      const error = params.get('error');
+
+      if (path === '/external-admin/auth/callback') {
+        showView('loading');
+        if (error) {
+          setNotice(ui.loginNotice, 'error', error);
+          showView('login');
+          return;
+        }
+        try {
+          await hydrateFromCookies();
+          window.location.replace(getRedirectTarget());
+        } catch (callbackError) {
+          setNotice(ui.loginNotice, 'error', callbackError.message);
+          showView('login');
+        }
+        return;
+      }
+
+      if (path === '/external-admin/login') {
+        const loginError = params.get('message') || params.get('error');
+        if (loginError) {
+          setNotice(ui.loginNotice, 'error', loginError);
+        }
+        showView('login');
+        return;
+      }
+
+      showView('loading');
+      try {
+        await bootstrapApp();
+      } catch (appError) {
+        setNotice(ui.loginNotice, 'error', appError.message);
+        showView('login');
+      }
+    }
+
+    main();
+  </script>
+</body>
+</html>

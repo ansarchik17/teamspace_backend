@@ -1,0 +1,1366 @@
+[
+  {
+    "key": "profile",
+    "connector": "workspace",
+    "path": "/api/v1/auth/me",
+    "description": "Текущий пользователь: имя, должность, компания. Не запрашивай чужой user_id.",
+    "detail_path": "",
+    "params": [
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Текущий пользователь"
+  },
+  {
+    "key": "organization",
+    "connector": "workspace",
+    "path": "/api/v1/organizations/current",
+    "description": "Текущая компания и структура пользователя",
+    "detail_path": "",
+    "params": [
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Текущая компания и структура пользователя"
+  },
+  {
+    "key": "colleagues",
+    "connector": "workspace",
+    "path": "/api/v1/organizations/current/users",
+    "description": "Список сотрудников текущей компании; для поиска по имени, логину или email используй colleague_search",
+    "detail_path": "",
+    "params": [
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Сотрудники текущей компании"
+  },
+  {
+    "key": "colleague_search",
+    "connector": "workspace",
+    "path": "/api/v1/search/users",
+    "description": "Поиск сотрудников и доступных пользователей по имени, фамилии, логину или email. Для получателя сообщения, задачи или встречи ищи здесь, а не в CRM-контактах. q: например t.company или Test Company. count — число найденных на этой странице, не общий итог.",
+    "detail_path": "",
+    "params": [
+      "q",
+      "limit",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Поиск сотрудников по имени, логину и email"
+  },
+  {
+    "key": "overview",
+    "connector": "workspace",
+    "path": "/api/v1/dashboard/summary",
+    "description": "Обзор работы пользователя",
+    "detail_path": "",
+    "params": [
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Обзор работы пользователя"
+  },
+  {
+    "key": "tasks",
+    "connector": "workspace",
+    "path": "/api/v1/kanban/tasks/search",
+    "description": "Задачи, доступные пользователю; для именно МОИХ задач assignee_ids подставляется сервером при mine=true; даты RFC3339, priorities строка приоритета",
+    "detail_path": "/api/v1/kanban/tasks/{id}",
+    "params": [
+      "q",
+      "status",
+      "priorities",
+      "limit",
+      "offset",
+      "date_from",
+      "date_to",
+      "mine",
+      "board_id",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Задачи, доступные пользователю",
+    "card_views": [
+      {
+        "service": "Workspace",
+        "title_fields": [
+          "title",
+          "name",
+          "subject",
+          "course.title",
+          "course.name"
+        ],
+        "status_fields": [
+          "display_status_label",
+          "status"
+        ],
+        "due_fields": [
+          "due_date",
+          "deadline",
+          "due_at"
+        ],
+        "link_id_fields": [],
+        "link_prefix": "",
+        "fields": [],
+        "items_paths": [
+          "",
+          "items",
+          "results"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "my_task_summary",
+    "connector": "workspace",
+    "path": "/api/v1/kanban/tasks/my-summary-by-board",
+    "description": "Полная сводка своих задач по доскам",
+    "detail_path": "",
+    "params": [
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Полная сводка своих задач по доскам"
+  },
+  {
+    "key": "boards",
+    "connector": "workspace",
+    "path": "/api/v1/kanban/boards",
+    "description": "Доступные канбан доски",
+    "detail_path": "/api/v1/kanban/boards/{id}",
+    "params": [
+      "limit",
+      "offset",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Доступные канбан доски"
+  },
+  {
+    "key": "task_comments",
+    "connector": "workspace",
+    "path": "",
+    "description": "Комментарии задачи: требуется id задачи",
+    "detail_path": "/api/v1/kanban/tasks/{id}/comments",
+    "params": [
+      "limit",
+      "offset",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Комментарии задачи"
+  },
+  {
+    "key": "task_history",
+    "connector": "workspace",
+    "path": "",
+    "description": "История изменений задачи: требуется id задачи",
+    "detail_path": "/api/v1/kanban/tasks/{id}/history",
+    "params": [
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "История изменений задачи"
+  },
+  {
+    "key": "goals",
+    "connector": "workspace",
+    "path": "/api/v1/kanban/goals/my",
+    "description": "Цели текущего пользователя",
+    "detail_path": "",
+    "params": [
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Цели текущего пользователя"
+  },
+  {
+    "key": "events",
+    "connector": "workspace",
+    "path": "/api/v1/calendar/events",
+    "description": "Встречи и календарь; для списка обязательны from/to. Даты YYYY-MM-DD включают оба дня в timezone пользователя (по умолчанию Asia/Almaty): один день from=to; неделя понедельник–воскресенье. RFC3339 задаёт точные моменты, to — исключающая верхняя граница. Для отмены сначала найди событие в нужном дне, проверь его ID и start_time; при пустом узком поиске перепроверь полный день и ранее найденное событие.",
+    "detail_path": "/api/v1/calendar/events/{id}",
+    "params": [
+      "from",
+      "to",
+      "timezone",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Встречи и календарь",
+    "card_views": [
+      {
+        "service": "Workspace",
+        "title_fields": [
+          "title",
+          "name",
+          "subject",
+          "course.title",
+          "course.name"
+        ],
+        "status_fields": [
+          "display_status_label",
+          "status"
+        ],
+        "due_fields": [
+          "due_date",
+          "deadline",
+          "due_at"
+        ],
+        "link_id_fields": [],
+        "link_prefix": "",
+        "fields": [],
+        "items_paths": [
+          "",
+          "items",
+          "results"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "event_search",
+    "connector": "workspace",
+    "path": "/api/v1/calendar/events/search",
+    "description": "Поиск календарных событий по тексту title; для списка обязательны from/to. Даты YYYY-MM-DD включают оба дня в timezone пользователя (по умолчанию Asia/Almaty): один день from=to; неделя понедельник–воскресенье. RFC3339 задаёт точные моменты, to — исключающая верхняя граница. Для отмены сначала найди событие в нужном дне, проверь его ID и start_time; при пустом узком поиске перепроверь полный день и ранее найденное событие.",
+    "detail_path": "",
+    "params": [
+      "title",
+      "from",
+      "to",
+      "limit",
+      "text_page",
+      "timezone"
+    ],
+    "defaults": {},
+    "title": "Поиск календарных событий по тексту"
+  },
+  {
+    "key": "calendars",
+    "connector": "workspace",
+    "path": "/api/v1/calendar/calendars",
+    "description": "Доступные календари",
+    "detail_path": "",
+    "params": [
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Доступные календари"
+  },
+  {
+    "key": "notes",
+    "connector": "workspace",
+    "path": "/api/v1/notes",
+    "description": "Заметки пользователя. Для полного содержимого используй id заметки; пагинация по cursor из ответа",
+    "detail_path": "/api/v1/notes/{id}",
+    "params": [
+      "q",
+      "cursor",
+      "limit",
+      "folder_id",
+      "scope",
+      "tag",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Заметки пользователя",
+    "card_views": [
+      {
+        "service": "Workspace",
+        "title_fields": [
+          "title",
+          "name",
+          "subject",
+          "course.title",
+          "course.name"
+        ],
+        "status_fields": [
+          "display_status_label",
+          "status"
+        ],
+        "due_fields": [
+          "due_date",
+          "deadline",
+          "due_at"
+        ],
+        "link_id_fields": [],
+        "link_prefix": "",
+        "fields": [],
+        "items_paths": [
+          "",
+          "items",
+          "results"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "note_folders",
+    "connector": "workspace",
+    "path": "/api/v1/notes/folders",
+    "description": "Папки заметок",
+    "detail_path": "",
+    "params": [
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Папки заметок"
+  },
+  {
+    "key": "drive",
+    "connector": "workspace",
+    "path": "/api/v1/drive/search",
+    "description": "Поиск файлов и папок, доступных пользователю",
+    "detail_path": "/api/v1/drive/files/{id}",
+    "params": [
+      "q",
+      "page",
+      "limit",
+      "type",
+      "user_filter",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Поиск файлов и папок, доступных пользователю"
+  },
+  {
+    "key": "drive_recent",
+    "connector": "workspace",
+    "path": "/api/v1/drive/recent",
+    "description": "Последние доступные файлы",
+    "detail_path": "",
+    "params": [
+      "limit",
+      "offset",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Последние доступные файлы"
+  },
+  {
+    "key": "conversations",
+    "connector": "workspace",
+    "path": "/api/v1/conversations",
+    "description": "Личные чаты пользователя",
+    "detail_path": "/api/v1/conversations/{id}/messages",
+    "params": [
+      "limit",
+      "offset",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Личные чаты пользователя"
+  },
+  {
+    "key": "groups",
+    "connector": "workspace",
+    "path": "/api/v1/groups",
+    "description": "Групповые чаты пользователя",
+    "detail_path": "/api/v1/groups/{id}/messages",
+    "params": [
+      "limit",
+      "offset",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Групповые чаты пользователя"
+  },
+  {
+    "key": "message_search",
+    "connector": "workspace",
+    "path": "/api/v1/search/messages/global",
+    "description": "Поиск по доступной переписке; E2EE содержимое недоступно серверу",
+    "detail_path": "",
+    "params": [
+      "q",
+      "limit",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Поиск по доступной переписке"
+  },
+  {
+    "key": "notifications",
+    "connector": "workspace",
+    "path": "/api/v1/notifications",
+    "description": "Уведомления пользователя",
+    "detail_path": "",
+    "params": [
+      "limit",
+      "offset",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Уведомления пользователя"
+  },
+  {
+    "key": "channels",
+    "connector": "workspace",
+    "path": "/api/v1/channels",
+    "description": "Каналы и лента пользователя",
+    "detail_path": "/api/v1/channels/{id}/posts",
+    "params": [
+      "limit",
+      "offset",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Каналы и лента пользователя"
+  },
+  {
+    "key": "recordings",
+    "connector": "workspace",
+    "path": "/api/v1/calls/recordings/personal",
+    "description": "Записи и доступные расшифровки собственных встреч",
+    "detail_path": "",
+    "params": [
+      "limit",
+      "offset",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Записи и доступные расшифровки собственных встреч"
+  },
+  {
+    "key": "workspace_search",
+    "connector": "workspace",
+    "path": "/api/v1/search/all",
+    "description": "Поиск по задачам, событиям, заметкам, документам и переписке",
+    "detail_path": "",
+    "params": [
+      "q",
+      "limit",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Поиск по задачам, событиям, заметкам, документам и переписке"
+  },
+  {
+    "key": "crm_context",
+    "connector": "workspace",
+    "path": "/api/v1/growy/api/context/",
+    "description": "Права пользователя и доступные модули CRM/Growy",
+    "detail_path": "",
+    "params": [
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Права пользователя и доступные модули CRM/Growy"
+  },
+  {
+    "key": "crm_leads",
+    "connector": "workspace",
+    "path": "/api/v1/growy/api/crm/leads/",
+    "description": "Лиды в CRM текущего пользователя, с проверкой прав компании; mine=true — только назначенные мне, mine=false или без mine — все доступные",
+    "detail_path": "/api/v1/growy/api/crm/leads/{id}/",
+    "params": [
+      "mine",
+      "search",
+      "page",
+      "page_size",
+      "status",
+      "priority",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Лиды в CRM текущего пользователя, с проверкой прав компании",
+    "mine_filter": "manager_id"
+  },
+  {
+    "key": "crm_contacts",
+    "connector": "workspace",
+    "path": "/api/v1/growy/api/crm/contacts/",
+    "description": "Контакты в CRM текущего пользователя, с проверкой прав компании",
+    "detail_path": "/api/v1/growy/api/crm/contacts/{id}/",
+    "params": [
+      "search",
+      "page",
+      "page_size",
+      "status",
+      "priority",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Контакты в CRM текущего пользователя, с проверкой прав компании"
+  },
+  {
+    "key": "crm_deals",
+    "connector": "workspace",
+    "path": "/api/v1/growy/api/crm/deals/",
+    "description": "Сделки в CRM текущего пользователя, с проверкой прав компании; mine=true — только назначенные мне, mine=false или без mine — все доступные",
+    "detail_path": "/api/v1/growy/api/crm/deals/{id}/",
+    "params": [
+      "mine",
+      "search",
+      "page",
+      "page_size",
+      "status",
+      "priority",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Сделки в CRM текущего пользователя, с проверкой прав компании",
+    "mine_filter": "manager_id"
+  },
+  {
+    "key": "crm_tasks",
+    "connector": "workspace",
+    "path": "/api/v1/growy/api/crm/tasks/",
+    "description": "Задачи CRM в CRM текущего пользователя, с проверкой прав компании; mine=true — только назначенные мне, mine=false или без mine — все доступные",
+    "detail_path": "/api/v1/growy/api/crm/tasks/{id}/",
+    "params": [
+      "mine",
+      "search",
+      "page",
+      "page_size",
+      "status",
+      "priority",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Задачи CRM в CRM текущего пользователя, с проверкой прав компании",
+    "mine_filter": "assigned_to"
+  },
+  {
+    "key": "whatsapp",
+    "connector": "workspace",
+    "path": "/api/v1/growy/api/whatsapp/conversations/",
+    "description": "Доступные клиентские диалоги WhatsApp",
+    "detail_path": "/api/v1/growy/api/whatsapp/conversations/{id}/messages/",
+    "params": [
+      "search",
+      "limit",
+      "before_id",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Доступные клиентские диалоги WhatsApp"
+  },
+  {
+    "key": "training",
+    "connector": "workspace",
+    "path": "/api/v1/growy/api/users/enrollments/",
+    "description": "Назначенные пользователю обучения и прогресс",
+    "detail_path": "/api/v1/growy/api/users/enrollments/{id}/progress-detail/",
+    "params": [
+      "page",
+      "page_size",
+      "text_page",
+      "status",
+      "training_program",
+      "search"
+    ],
+    "defaults": {
+      "as_employee": "true"
+    },
+    "title": "Моё обучение",
+    "card_views": [
+      {
+        "service": "Growy",
+        "title_fields": [
+          "title",
+          "name",
+          "subject",
+          "course.title",
+          "course.name"
+        ],
+        "status_fields": [
+          "display_status_label",
+          "status"
+        ],
+        "due_fields": [
+          "due_date",
+          "deadline",
+          "due_at"
+        ],
+        "link_id_fields": [],
+        "link_prefix": "",
+        "fields": [],
+        "items_paths": [
+          "",
+          "items",
+          "results"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "courses",
+    "connector": "workspace",
+    "path": "/api/v1/growy/api/training-programs/my-unfinished/",
+    "description": "Незавершённые программы обучения текущего пользователя",
+    "detail_path": "",
+    "params": [
+      "page",
+      "page_size",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Незавершённые программы обучения текущего пользователя"
+  },
+  {
+    "key": "odo_documents",
+    "connector": "odo",
+    "path": "/api/v1/documents",
+    "description": "Доступные пользователю документы ЭДО, включая статусы Для вопроса о требуемом действии статус списка недостаточен: личные документы и доступные действия проверяй через odo_sla. Список документов содержит documents; detail — один объект документа.",
+    "detail_path": "/api/v1/documents/{id}",
+    "params": [
+      "search",
+      "q",
+      "status",
+      "kind",
+      "direction",
+      "control",
+      "due",
+      "registration_number",
+      "page",
+      "limit",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Доступные пользователю документы ЭДО, включая статусы",
+    "card_views": [
+      {
+        "service": "ЭДО",
+        "title_fields": [
+          "title"
+        ],
+        "status_fields": [
+          "display_status_label",
+          "status"
+        ],
+        "due_fields": [
+          "due_date",
+          "deadline",
+          "due_at"
+        ],
+        "link_id_fields": [
+          "id"
+        ],
+        "link_prefix": "/web/eps?document=",
+        "fields": [
+          {
+            "label": "Номер",
+            "paths": [
+              "registration_number"
+            ]
+          },
+          {
+            "label": "Отправитель",
+            "paths": [
+              "sender_name"
+            ]
+          },
+          {
+            "label": "Исполнитель",
+            "paths": [
+              "current_executor_name"
+            ]
+          }
+        ],
+        "items_paths": [
+          "documents",
+          ""
+        ]
+      }
+    ],
+    "required_context": [
+      "odo_sla"
+    ]
+  },
+  {
+    "key": "odo_search",
+    "connector": "odo",
+    "path": "/api/v1/documents/search",
+    "description": "Поиск по доступным документам ЭДО Для вопроса о требуемом действии статус списка недостаточен: личные документы и доступные действия проверяй через odo_sla. Список документов содержит documents; detail — один объект документа.",
+    "detail_path": "",
+    "params": [
+      "q",
+      "search",
+      "page",
+      "limit",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Поиск по доступным документам ЭДО",
+    "card_views": [
+      {
+        "service": "ЭДО",
+        "title_fields": [
+          "title"
+        ],
+        "status_fields": [
+          "display_status_label",
+          "status"
+        ],
+        "due_fields": [
+          "due_date",
+          "deadline",
+          "due_at"
+        ],
+        "link_id_fields": [
+          "id"
+        ],
+        "link_prefix": "/web/eps?document=",
+        "fields": [
+          {
+            "label": "Номер",
+            "paths": [
+              "registration_number"
+            ]
+          },
+          {
+            "label": "Отправитель",
+            "paths": [
+              "sender_name"
+            ]
+          },
+          {
+            "label": "Исполнитель",
+            "paths": [
+              "current_executor_name"
+            ]
+          }
+        ],
+        "items_paths": [
+          "documents"
+        ]
+      }
+    ],
+    "required_context": [
+      "odo_sla"
+    ]
+  },
+  {
+    "key": "odo_assignments",
+    "connector": "odo",
+    "path": "/api/v1/assignments",
+    "description": "Поручения, назначенные текущему пользователю ЭДО. Исполнитель определяется сервером по действующей сессии; не передавай mine или executor_id. Поддерживаются поиск, статус, документ и сроки. Это только поручения; пустой список не доказывает отсутствие документов на согласование или подпись. Для общей проверки читай также odo_sla. Не придумывай статус pending; допустимые статусы уточняй по данным. Список находится в assignments.",
+    "detail_path": "/api/v1/assignments/{id}",
+    "params": [
+      "status",
+      "search",
+      "q",
+      "document_id",
+      "overdue",
+      "due_date",
+      "date_from",
+      "date_to",
+      "sort_by",
+      "sort_order",
+      "page",
+      "limit",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Поручения ЭДО пользователя",
+    "actor_filter": "executor_id",
+    "card_views": [
+      {
+        "service": "ЭДО",
+        "title_fields": [
+          "title",
+          "document_title"
+        ],
+        "status_fields": [
+          "display_status_label",
+          "status"
+        ],
+        "due_fields": [
+          "due_date",
+          "deadline",
+          "due_at"
+        ],
+        "link_id_fields": [
+          "document_id"
+        ],
+        "link_prefix": "/web/eps?document=",
+        "fields": [
+          {
+            "label": "Документ",
+            "paths": [
+              "document_title"
+            ]
+          },
+          {
+            "label": "Автор",
+            "paths": [
+              "author_name"
+            ]
+          }
+        ],
+        "items_paths": [
+          "assignments",
+          ""
+        ]
+      }
+    ],
+    "required_context": [
+      "odo_sla"
+    ]
+  },
+  {
+    "key": "odo_sla",
+    "connector": "odo",
+    "path": "/api/v1/documents/sla-context/my",
+    "description": "Личный контекст сроков ЭДО: current_user_id пользователя в ЭДО, относящиеся к нему документы, поручения, статусы и доступные действия. Не путай ID пользователя ЭДО с actor_id Workspace. Для вопроса «какие документы требуют моего действия» сначала прочитай этот источник: согласование, подпись и исполнение не ограничиваются поручениями. documents содержит личные документы, включая согласования; available_actions показывает разрешённые действия. Сопоставляй current_user_id с signer_id/current_executor_id и участниками маршрута odo_workflow. assignments может включать видимые поручения других исполнителей: для «мои поручения» проверяй assignee_id/executor_id=current_user_id. Не представляй все доступные документы как требующие действия.",
+    "detail_path": "",
+    "params": [
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Мои документы и поручения ЭДО",
+    "card_views": [
+      {
+        "service": "ЭДО",
+        "title_fields": [
+          "title"
+        ],
+        "status_fields": [
+          "display_status_label",
+          "status"
+        ],
+        "due_fields": [
+          "due_date",
+          "deadline",
+          "due_at"
+        ],
+        "link_id_fields": [
+          "id"
+        ],
+        "link_prefix": "/web/eps?document=",
+        "fields": [
+          {
+            "label": "Номер",
+            "paths": [
+              "registration_number"
+            ]
+          },
+          {
+            "label": "Отправитель",
+            "paths": [
+              "sender_name"
+            ]
+          },
+          {
+            "label": "Исполнитель",
+            "paths": [
+              "current_executor_name"
+            ]
+          }
+        ],
+        "empty_title": "Документы из моего личного контекста ЭДО",
+        "items_paths": [
+          "documents"
+        ]
+      },
+      {
+        "service": "ЭДО",
+        "title_fields": [
+          "title",
+          "document_title"
+        ],
+        "status_fields": [
+          "display_status_label",
+          "status"
+        ],
+        "due_fields": [
+          "due_date",
+          "deadline",
+          "due_at"
+        ],
+        "link_id_fields": [
+          "document_id"
+        ],
+        "link_prefix": "/web/eps?document=",
+        "fields": [
+          {
+            "label": "Автор",
+            "paths": [
+              "author_name"
+            ]
+          }
+        ],
+        "empty_title": "Поручения из моего личного контекста ЭДО",
+        "items_paths": [
+          "assignments"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "odo_workflow",
+    "connector": "odo",
+    "path": "",
+    "description": "Маршрут и этапы согласования документа: требуется id документа",
+    "detail_path": "/api/v1/documents/{id}/workflow-plan",
+    "params": [
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Маршрут и этапы согласования документа"
+  },
+  {
+    "key": "odo_notifications",
+    "connector": "odo",
+    "path": "/api/v1/notifications",
+    "description": "Уведомления ЭДО",
+    "detail_path": "",
+    "params": [
+      "limit",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Уведомления ЭДО"
+  },
+  {
+    "key": "sd_tickets",
+    "connector": "sd",
+    "path": "/tickets",
+    "description": "Заявки SenimDesk только в рамках действующих прав пользователя; поиск title/description, статусы status_name/status_type",
+    "detail_path": "/tickets/{id}",
+    "params": [
+      "title",
+      "description",
+      "status_name",
+      "status_type",
+      "category_id",
+      "priority_id",
+      "object_id",
+      "project_id",
+      "limit",
+      "offset",
+      "sort_by",
+      "date_from",
+      "date_to",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Заявки SenimDesk",
+    "card_views": [
+      {
+        "service": "SenimDesk",
+        "title_fields": [
+          "title",
+          "name",
+          "subject",
+          "course.title",
+          "course.name"
+        ],
+        "status_fields": [
+          "display_status_label",
+          "status"
+        ],
+        "due_fields": [
+          "due_date",
+          "deadline",
+          "due_at"
+        ],
+        "link_id_fields": [],
+        "link_prefix": "",
+        "fields": [],
+        "items_paths": [
+          "",
+          "items",
+          "results"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "sd_planned",
+    "connector": "sd",
+    "path": "/planned-works",
+    "description": "Плановые работы SenimDesk только в рамках действующих прав пользователя",
+    "detail_path": "/planned-works/{id}",
+    "params": [
+      "search",
+      "q",
+      "status",
+      "page",
+      "page_size",
+      "limit",
+      "offset",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Плановые работы SenimDesk"
+  },
+  {
+    "key": "sd_objects",
+    "connector": "sd",
+    "path": "/objects",
+    "description": "Объекты SenimDesk только в рамках действующих прав пользователя",
+    "detail_path": "/objects/{id}",
+    "params": [
+      "search",
+      "q",
+      "status",
+      "page",
+      "page_size",
+      "limit",
+      "offset",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Объекты SenimDesk"
+  },
+  {
+    "key": "sd_projects",
+    "connector": "sd",
+    "path": "/projects",
+    "description": "Проекты SenimDesk только в рамках действующих прав пользователя",
+    "detail_path": "/projects/{id}",
+    "params": [
+      "search",
+      "q",
+      "status",
+      "page",
+      "page_size",
+      "limit",
+      "offset",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Проекты SenimDesk"
+  },
+  {
+    "key": "sd_clients",
+    "connector": "sd",
+    "path": "/clients",
+    "description": "Клиенты SenimDesk только в рамках действующих прав пользователя",
+    "detail_path": "",
+    "params": [
+      "search",
+      "q",
+      "status",
+      "page",
+      "page_size",
+      "limit",
+      "offset",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Клиенты SenimDesk"
+  },
+  {
+    "key": "sd_knowledge",
+    "connector": "sd",
+    "path": "/knowledge/articles",
+    "description": "Статьи базы знаний SenimDesk только в рамках действующих прав пользователя",
+    "detail_path": "/knowledge/articles/{id}",
+    "params": [
+      "search",
+      "q",
+      "status",
+      "page",
+      "page_size",
+      "limit",
+      "offset",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Статьи базы знаний SenimDesk"
+  },
+  {
+    "key": "sd_stats",
+    "connector": "sd",
+    "path": "/dashboard/stats",
+    "description": "Сводка заявок SenimDesk",
+    "detail_path": "",
+    "params": [
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Сводка заявок SenimDesk"
+  },
+  {
+    "key": "sd_comments",
+    "connector": "sd",
+    "path": "",
+    "description": "Комментарии заявки SenimDesk: требуется id заявки",
+    "detail_path": "/tickets/{id}/comments",
+    "params": [
+      "limit",
+      "offset",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Комментарии заявки SenimDesk"
+  },
+  {
+    "key": "mail",
+    "connector": "mail",
+    "path": "/api/internal/workspace/ai/messages",
+    "description": "Все папки личного корпоративного ящика пользователя; folder: inbox,sent,drafts,spam,trash,starred,archive; page для списков и частей текста письма",
+    "detail_path": "/api/internal/workspace/ai/messages/{id}",
+    "params": [
+      "folder",
+      "search",
+      "page",
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "Все папки личного корпоративного ящика пользователя"
+  },
+  {
+    "key": "ai_chats",
+    "connector": "workspace",
+    "path": "/api/v1/ai/chats",
+    "detail_path": "/api/v1/ai/chats/{id}/messages",
+    "description": "История собственных чатов с ИИ: список чатов и сообщения выбранного чата",
+    "params": [
+      "text_page"
+    ],
+    "defaults": {},
+    "title": "История собственных чатов с ИИ"
+  },
+  {
+    "key": "odo_attachments",
+    "connector": "odo",
+    "path": "",
+    "detail_path": "/api/v1/documents/{id}/attachments",
+    "description": "Вложения документа ЭДО: требуется id документа",
+    "params": [
+      "text_page"
+    ],
+    "defaults": {},
+    "response_type": "",
+    "title": "Вложения документа ЭДО"
+  },
+  {
+    "key": "odo_attachment_text",
+    "connector": "odo",
+    "path": "",
+    "detail_path": "/api/v1/documents/{id}/attachments/{attachment_id}/download",
+    "description": "Содержимое вложения ЭДО: id документа и params.attachment_id из odo_attachments; params.text_page для продолжения",
+    "params": [
+      "attachment_id",
+      "text_page"
+    ],
+    "defaults": {},
+    "response_type": "document",
+    "title": "Вложение документа ЭДО"
+  },
+  {
+    "key": "mail_attachment_text",
+    "connector": "mail",
+    "path": "",
+    "detail_path": "/api/internal/workspace/ai/attachments/{id}",
+    "description": "Текст вложения своего письма: id из attachments результата mail, text_page для продолжения",
+    "params": [
+      "text_page"
+    ],
+    "defaults": {},
+    "response_type": "document",
+    "title": "Вложение письма"
+  },
+  {
+    "key": "iform_profile",
+    "connector": "workspace",
+    "path": "/api/v1/iform/api/me",
+    "detail_path": "",
+    "description": "Профиль, компания, роли и режим Iform текущего пользователя",
+    "title": "Профиль, компания, роли и режим Iform текущего пользователя",
+    "params": [
+      "text_page"
+    ],
+    "defaults": {}
+  },
+  {
+    "key": "iform_directory",
+    "connector": "workspace",
+    "path": "/api/v1/iform/api/directory",
+    "detail_path": "",
+    "description": "Доступный пользователю справочник сотрудников и подразделений Iform",
+    "title": "Доступный пользователю справочник сотрудников и подразделений Iform",
+    "params": [
+      "text_page"
+    ],
+    "defaults": {}
+  },
+  {
+    "key": "iform_processes",
+    "connector": "workspace",
+    "path": "/api/v1/iform/api/processes",
+    "detail_path": "/api/v1/iform/api/processes/{id}",
+    "description": "Доступные пользователю процессы Iform; page начинается с 1, pageSize до 25; если список содержит 25 строк, прочитай следующую страницу до неполной страницы",
+    "title": "Доступные пользователю процессы Iform",
+    "params": [
+      "page",
+      "pageSize",
+      "text_page"
+    ],
+    "defaults": {
+      "page": "0",
+      "pageSize": "25"
+    },
+    "zero_based_page": true,
+    "card_views": [
+      {
+        "service": "Iform",
+        "title_fields": [
+          "title",
+          "name",
+          "subject",
+          "course.title",
+          "course.name"
+        ],
+        "status_fields": [
+          "display_status_label",
+          "status"
+        ],
+        "due_fields": [
+          "due_date",
+          "deadline",
+          "due_at"
+        ],
+        "link_id_fields": [],
+        "link_prefix": "",
+        "fields": [],
+        "items_paths": [
+          "",
+          "items",
+          "results"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "iform_requests",
+    "connector": "workspace",
+    "path": "/api/v1/iform/api/requests",
+    "detail_path": "/api/v1/iform/api/requests/{id}",
+    "description": "Доступные пользователю заявки Iform и их детали, поля формы и этапы; page начинается с 1, pageSize до 25; если список содержит 25 строк, прочитай следующую страницу до неполной страницы",
+    "title": "Доступные пользователю заявки Iform и их детали, поля формы и этапы",
+    "params": [
+      "page",
+      "pageSize",
+      "text_page"
+    ],
+    "defaults": {
+      "page": "0",
+      "pageSize": "25"
+    },
+    "zero_based_page": true,
+    "card_views": [
+      {
+        "service": "Iform",
+        "title_fields": [
+          "title",
+          "name",
+          "subject",
+          "course.title",
+          "course.name"
+        ],
+        "status_fields": [
+          "display_status_label",
+          "status"
+        ],
+        "due_fields": [
+          "due_date",
+          "deadline",
+          "due_at"
+        ],
+        "link_id_fields": [],
+        "link_prefix": "",
+        "fields": [],
+        "items_paths": [
+          "",
+          "items",
+          "results"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "iform_tasks",
+    "connector": "workspace",
+    "path": "/api/v1/iform/api/tasks",
+    "detail_path": "/api/v1/iform/api/tasks/{id}",
+    "description": "Задачи Iform, назначенные текущему пользователю; список и детали",
+    "title": "Задачи Iform, назначенные текущему пользователю",
+    "params": [
+      "text_page"
+    ],
+    "defaults": {},
+    "card_views": [
+      {
+        "service": "Iform",
+        "title_fields": [
+          "title",
+          "name",
+          "subject",
+          "course.title",
+          "course.name"
+        ],
+        "status_fields": [
+          "display_status_label",
+          "status"
+        ],
+        "due_fields": [
+          "due_date",
+          "deadline",
+          "due_at"
+        ],
+        "link_id_fields": [],
+        "link_prefix": "",
+        "fields": [],
+        "items_paths": [
+          "",
+          "items",
+          "results"
+        ]
+      }
+    ]
+  },
+  {
+    "key": "iform_request_timeline",
+    "connector": "workspace",
+    "path": "",
+    "detail_path": "/api/v1/iform/api/requests/{id}/timeline",
+    "description": "История доступной заявки Iform; требуется id заявки",
+    "title": "История доступной заявки Iform",
+    "params": [
+      "text_page"
+    ],
+    "defaults": {}
+  },
+  {
+    "key": "iform_request_documents",
+    "connector": "workspace",
+    "path": "",
+    "detail_path": "/api/v1/iform/api/requests/{id}/documents",
+    "description": "Метаданные документов доступной заявки Iform; требуется id заявки",
+    "title": "Метаданные документов доступной заявки Iform",
+    "params": [
+      "text_page"
+    ],
+    "defaults": {}
+  },
+  {
+    "key": "iform_notifications",
+    "connector": "workspace",
+    "path": "/api/v1/iform/api/notifications",
+    "detail_path": "",
+    "description": "Уведомления текущего пользователя в Iform; чтение не отмечает их прочитанными",
+    "title": "Уведомления текущего пользователя в Iform",
+    "params": [
+      "text_page"
+    ],
+    "defaults": {}
+  },
+  {
+    "key": "iform_forms",
+    "connector": "workspace",
+    "path": "",
+    "detail_path": "/api/v1/iform/api/forms/{id}",
+    "description": "Схема опубликованной формы Iform и доступные текущему пользователю предзаполненные данные; id означает process_key из списка процессов",
+    "title": "Схема опубликованной формы Iform и доступные текущему пользователю предзаполненные данные",
+    "params": [
+      "text_page"
+    ],
+    "defaults": {}
+  }
+]

@@ -1,0 +1,171 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: workspace:latest
+    container_name: workspace-api
+    restart: always
+    env_file:
+      - .env
+    environment:
+      LOG_FORMAT: console
+      POSTGRES_HOST: workspace-postgres
+      POSTGRES_PORT: "5432"
+      REDIS_HOST: workspace-redis
+      REDIS_PORT: "6379"
+      MINIO_ENDPOINT: workspace-minio:9000
+      MINIO_EGRESS_ENDPOINT: http://workspace-minio:9000
+      RABBITMQ_URL: amqp://guest:guest@workspace-rabbitmq:5672/
+      APP_PUBLIC_URL: http://localhost:5173
+      COLLABORA_URL: ${COLLABORA_URL:-}
+      KEYCLOAK_URL: http://workspace-keycloak:8080
+      KEYCLOAK_PUBLIC_URL: http://localhost:8081
+      KEYCLOAK_ISSUER: http://localhost:8081/realms/master
+      KEYCLOAK_REALM: master
+      KEYCLOAK_CLIENT_ID: alem-workspace
+      KEYCLOAK_CLIENT_SECRET: ""
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "18081:8080"
+    volumes:
+      - ./key/firebase-adminsdk.json:/key/firebase-adminsdk.json:ro
+      - ./certs:/custom-ca:ro
+    depends_on:
+      workspace-postgres:
+        condition: service_healthy
+      workspace-redis:
+        condition: service_healthy
+      workspace-rabbitmq:
+        condition: service_healthy
+      workspace-minio:
+        condition: service_healthy
+    networks:
+      - workspace-network
+
+  workspace-livekit:
+    image: ${LIVEKIT_IMAGE:-livekit/livekit-server:v1.13.7}
+    container_name: workspace-livekit
+    restart: always
+    environment:
+      LIVEKIT_CONFIG: |
+        port: 7880
+        log_level: info
+        rtc:
+          tcp_port: 7881
+          udp_port: 7882
+          use_external_ip: false
+        keys:
+          ${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}
+        webhook:
+          api_key: ${LIVEKIT_API_KEY}
+          urls:
+            - http://workspace-api:8080/api/v1/calls/webhook
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+    networks:
+      - workspace-network
+
+  workspace-postgres:
+    image: postgres:16-alpine
+    container_name: postgres-workspace
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: workspace
+    ports:
+      - "15433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - workspace-network
+
+  workspace-redis:
+    image: redis:7-alpine
+    container_name: redis-workspace
+    command: redis-server --appendonly yes
+    ports:
+      - "16379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - workspace-network
+
+  workspace-minio:
+    image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z@sha256:a1ea29fa28355559ef137d71fc570e508a214ec84ff8083e39bc5428980b015e
+    container_name: minio-workspace
+    command: server /data --console-address ":9002"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "19000:9000"
+      - "19002:9002"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - workspace-network
+
+  workspace-rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq-workspace
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "15673:5672"
+      - "15674:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - workspace-network
+
+  workspace-keycloak:
+    image: quay.io/keycloak/keycloak:24.0.0
+    container_name: keycloak-workspace
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_FEATURES: "token-exchange,admin-fine-grained-authz"
+      KC_HOSTNAME_URL: http://localhost:8081
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_HTTP_ENABLED: "true"
+    ports:
+      - "8081:8080"
+    networks:
+      - workspace-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  rabbitmq_data:
+
+networks:
+  workspace-network:
+    driver: bridge

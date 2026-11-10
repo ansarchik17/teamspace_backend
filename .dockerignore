@@ -1,0 +1,63 @@
+# Documentation
+*.md
+
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Build artifacts
+bin/
+tmp/
+.cache/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test files
+*_test.go
+testdata/
+coverage.out
+coverage.html
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Original project backup
+original_project/
+*.zip
+
+# Air
+.air.toml
+
+# Docker
+docker-compose.yml
+docker-compose.*.yml
+Dockerfile
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Dependencies (will be downloaded in Docker)
+vendor/
+
+# Misc
+README.md
+LICENSE
+Makefile

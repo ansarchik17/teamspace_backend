@@ -1,0 +1,38 @@
+{
+  "ru": {
+    "notification.ApplicationProcessed": "Заявление обработано",
+    "notification.ApplicationStatusChanged": "Статус заявления изменён",
+    "notification.ResponseReceived": "Ответ по вашему обращению",
+    "notification.SystemNotification": "Новое системное уведомление",
+    "notification.SourceNotificationPattern": "Уведомление от {{.Source}}",
+    "notification.ProcessedMessageFallback": "Ваше заявление успешно обработано. Откройте уведомление, чтобы посмотреть детали.",
+    "notification.PendingMessageFallback": "Ваше заявление принято в обработку.",
+    "notification.ResponseReceivedMessage": "По вашему обращению получен ответ. Откройте уведомление, чтобы посмотреть детали.",
+    "notification.ProcessedMessageWithID": "Ваше заявление №{{.ID}} успешно обработано. Результат доступен в разделе «Заявления».",
+    "notification.PendingMessageWithID": "Ваше заявление №{{.ID}} принято в обработку."
+  },
+  "kk": {
+    "notification.ApplicationProcessed": "Өтініш өңделді",
+    "notification.ApplicationStatusChanged": "Өтініш күйі өзгерді",
+    "notification.ResponseReceived": "Өтінішіңіз бойынша жауап келді",
+    "notification.SystemNotification": "Жаңа жүйелік хабарлама",
+    "notification.SourceNotificationPattern": "{{.Source}} хабарламасы",
+    "notification.ProcessedMessageFallback": "Сіздің өтінішіңіз өңделді. Толық мәліметті көру үшін хабарламаны ашыңыз.",
+    "notification.PendingMessageFallback": "Сіздің өтінішіңіз өңдеуге қабылданды.",
+    "notification.ResponseReceivedMessage": "Өтінішіңіз бойынша жауап келді. Толық мәліметті көру үшін хабарламаны ашыңыз.",
+    "notification.ProcessedMessageWithID": "Сіздің №{{.ID}} өтінішіңіз сәтті өңделді. Нәтиже «Өтініштер» бөлімінде қолжетімді.",
+    "notification.PendingMessageWithID": "Сіздің №{{.ID}} өтінішіңіз өңдеуге қабылданды."
+  },
+  "en": {
+    "notification.ApplicationProcessed": "Application processed",
+    "notification.ApplicationStatusChanged": "Application status updated",
+    "notification.ResponseReceived": "Response to your request",
+    "notification.SystemNotification": "New system notification",
+    "notification.SourceNotificationPattern": "Notification from {{.Source}}",
+    "notification.ProcessedMessageFallback": "Your application has been processed. Open the notification to view the details.",
+    "notification.PendingMessageFallback": "Your application has been accepted for processing.",
+    "notification.ResponseReceivedMessage": "A response to your request has been received. Open the notification to view the details.",
+    "notification.ProcessedMessageWithID": "Your application #{{.ID}} has been processed successfully. The result is available in the Applications section.",
+    "notification.PendingMessageWithID": "Your application #{{.ID}} has been accepted for processing."
+  }
+}

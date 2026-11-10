@@ -1,0 +1,16 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: retrieval_test
+      POSTGRES_USER: retrieval_test
+      POSTGRES_PASSWORD: local-test-only
+    ports:
+      - "127.0.0.1::5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U retrieval_test -d retrieval_test"]
+      interval: 2s
+      timeout: 2s
+      retries: 20

@@ -1,0 +1,25 @@
+{
+  "expected_host": "vds38185.vpsza500.kz",
+  "root": "/opt",
+  "state_dir": "/var/lib/docker-image-retention",
+  "keep_latest": 5,
+  "min_age_hours": 24,
+  "min_free_gib": 30,
+  "repositories": [
+    "ghcr.io/west6ide/workspace-backend",
+    "ghcr.io/west6ide/workspace-front",
+    "ghcr.io/west6ide/workspace-odo-backend",
+    "ghcr.io/west6ide/workspace-odo-kalkan",
+    "ghcr.io/west6ide/workspace-odo-front",
+    "ghcr.io/west6ide/workspace-sd-backend",
+    "ghcr.io/west6ide/workspace-sd-front",
+    "ghcr.io/west6ide/workspace-growy-backend",
+    "ghcr.io/west6ide/workspace-growy-front",
+    "ghcr.io/west6ide/iform-backend",
+    "ghcr.io/west6ide/iform-frontend",
+    "ghcr.io/west6ide/workspace-ai",
+    "ghcr.io/west6ide/workspace-front-mail",
+    "ghcr.io/west6ide/workspace-front-whiteboard-frontend",
+    "ghcr.io/west6ide/workspace-front-whiteboard-backend"
+  ]
+}

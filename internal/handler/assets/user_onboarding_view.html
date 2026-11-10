@@ -1,0 +1,1231 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Регистрация пользователей</title>
+  <style>
+    :root {
+      --bg: #f3eee6;
+      --panel: rgba(255, 251, 245, 0.92);
+      --panel-strong: #fffaf3;
+      --panel-soft: #f7efe4;
+      --text: #201913;
+      --muted: #6b5d4f;
+      --line: #d9c8b3;
+      --accent: #a33f1f;
+      --accent-2: #0f766e;
+      --danger: #b42318;
+      --success: #166534;
+      --shadow: 0 20px 50px rgba(59, 42, 22, 0.08);
+      --radius: 20px;
+      --mono: "JetBrains Mono", Consolas, monospace;
+      --sans: "Segoe UI", "Noto Sans", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(163, 63, 31, 0.12), transparent 28%),
+        radial-gradient(circle at 85% 0%, rgba(15, 118, 110, 0.1), transparent 24%),
+        linear-gradient(180deg, #f7f2ea 0%, #efe7dc 100%);
+    }
+
+    .page {
+      width: min(1440px, calc(100vw - 32px));
+      margin: 20px auto 40px;
+    }
+
+    .hero,
+    .panel {
+      background: var(--panel);
+      border: 1px solid rgba(217, 200, 179, 0.9);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
+    }
+
+    .hero {
+      padding: 28px;
+      margin-bottom: 18px;
+    }
+
+    .eyebrow {
+      margin-bottom: 10px;
+      font: 700 12px/1 var(--mono);
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--accent);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 3.5vw, 46px);
+      line-height: 1.02;
+      letter-spacing: -0.04em;
+    }
+
+    .subtitle {
+      margin: 12px 0 0;
+      color: var(--muted);
+      max-width: 980px;
+      line-height: 1.55;
+      font-size: 15px;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+
+    .sidebar,
+    .content {
+      display: grid;
+      gap: 18px;
+    }
+
+    .panel {
+      padding: 20px;
+    }
+
+    .panel h2 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      letter-spacing: -0.03em;
+    }
+
+    .panel-copy {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .grid.two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    input,
+    select,
+    textarea,
+    button {
+      font: inherit;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel-strong);
+      color: var(--text);
+      padding: 12px 14px;
+      outline: none;
+      transition: border-color 140ms ease, box-shadow 140ms ease;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(163, 63, 31, 0.12);
+    }
+
+    textarea {
+      min-height: 116px;
+      resize: vertical;
+    }
+
+    .toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      color: var(--text);
+    }
+
+    .toggle input {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--accent);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    button {
+      height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 0 16px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: transform 140ms ease, opacity 140ms ease, background 140ms ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:disabled { cursor: wait; opacity: 0.65; transform: none; }
+
+    .primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .secondary {
+      background: var(--panel-soft);
+      color: var(--text);
+    }
+
+    .ghost {
+      background: transparent;
+      color: var(--muted);
+    }
+
+    .status {
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 14px;
+      line-height: 1.45;
+      border: 1px solid var(--line);
+      background: var(--panel-soft);
+      color: var(--text);
+      white-space: pre-wrap;
+    }
+
+    .status.error {
+      border-color: rgba(180, 35, 24, 0.24);
+      background: rgba(180, 35, 24, 0.08);
+      color: var(--danger);
+    }
+
+    .status.success {
+      border-color: rgba(22, 101, 52, 0.24);
+      background: rgba(22, 101, 52, 0.08);
+      color: var(--success);
+    }
+
+    .status.info {
+      border-color: rgba(15, 118, 110, 0.22);
+      background: rgba(15, 118, 110, 0.08);
+      color: var(--accent-2);
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .chip {
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-family: var(--mono);
+      color: var(--muted);
+      background: var(--panel-soft);
+      border: 1px solid var(--line);
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .users-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255, 250, 243, 0.72);
+    }
+
+    table {
+      width: 100%;
+      min-width: 1040px;
+      border-collapse: collapse;
+    }
+
+    th,
+    td {
+      padding: 12px;
+      border-bottom: 1px solid rgba(217, 200, 179, 0.8);
+      vertical-align: top;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #fcf5eb;
+      text-align: left;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    td input {
+      min-width: 120px;
+    }
+
+    .row-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .row-actions button {
+      height: 38px;
+      padding: 0 12px;
+    }
+
+    .summary {
+      display: grid;
+      gap: 10px;
+    }
+
+    .summary-item {
+      padding: 14px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: var(--panel-strong);
+    }
+
+    .summary-label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .summary-value {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+    }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 1120px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .page {
+        width: min(100vw - 20px, 100%);
+        margin: 10px auto 24px;
+      }
+
+      .hero,
+      .panel {
+        padding: 16px;
+      }
+
+      .grid.two {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div class="eyebrow">User Onboarding</div>
+      <h1>Регистрация пользователей и привязка к структуре</h1>
+      <p class="subtitle">
+        Страница работает поверх текущих API. Вы выбираете существующие министерство, госорган,
+        департамент и управление, а если нужной структуры нет, создаете ее на месте и затем
+        регистрируете одного или сразу несколько сотрудников.
+      </p>
+    </section>
+
+    <section class="layout">
+      <aside class="sidebar">
+        <section class="panel">
+          <h2>Доступ</h2>
+          <p class="panel-copy">
+            Для создания подразделений и пользователей нужен Bearer token администратора или руководителя
+            соответствующего госоргана.
+          </p>
+          <div class="grid">
+            <label>
+              Bearer token
+              <textarea id="tokenInput" placeholder="Вставьте JWT без префикса Bearer или вместе с ним"></textarea>
+            </label>
+            <div class="actions">
+              <button class="primary" id="loadTreeButton" type="button">Загрузить структуру</button>
+              <button class="secondary" id="clearTokenButton" type="button">Очистить</button>
+            </div>
+            <div id="tokenStatus" class="status info">Сначала загрузите дерево структуры.</div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Контекст назначения</h2>
+          <p class="panel-copy">
+            Пользователи будут созданы с выбранными `ministry_id`, `state_body_id`, `department_id`, `division_id`.
+          </p>
+          <div class="summary">
+            <div class="summary-item">
+              <div class="summary-label">Министерство</div>
+              <div class="summary-value" id="summaryMinistry">Не выбрано</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-label">Госорган</div>
+              <div class="summary-value" id="summaryStateBody">Не выбрано</div>
+            </div>
+            <div class="summary-item">
+              <div class="summary-label">Подразделение</div>
+              <div class="summary-value" id="summaryDepartment">Не выбрано</div>
+            </div>
+          </div>
+          <div class="chips" id="assignmentChips"></div>
+        </section>
+      </aside>
+
+      <section class="content">
+        <section class="panel">
+          <h2>Структура</h2>
+          <p class="panel-copy">
+            Выберите существующие элементы или включите создание новых, если нужного департамента или управления еще нет.
+          </p>
+          <div class="grid two">
+            <label>
+              Министерство
+              <select id="ministrySelect">
+                <option value="">Сначала загрузите дерево</option>
+              </select>
+            </label>
+            <label>
+              Госорган
+              <select id="stateBodySelect" disabled>
+                <option value="">Выберите министерство</option>
+              </select>
+            </label>
+            <label>
+              Департамент
+              <select id="departmentSelect" disabled>
+                <option value="">Не выбран</option>
+              </select>
+            </label>
+            <label>
+              Управление
+              <select id="divisionSelect" disabled>
+                <option value="">Не выбрано</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="grid" style="margin-top: 14px;">
+            <label class="toggle">
+              <input type="checkbox" id="createDepartmentToggle">
+              Создать новый департамент
+            </label>
+            <label id="createDepartmentField" class="hidden">
+              Название нового департамента
+              <input id="newDepartmentName" type="text" placeholder="Например, Центр цифровой трансформации">
+            </label>
+
+            <label class="toggle">
+              <input type="checkbox" id="createDivisionToggle">
+              Создать новое управление
+            </label>
+            <label id="createDivisionField" class="hidden">
+              Название нового управления
+              <input id="newDivisionName" type="text" placeholder="Например, Отдел аналитики и развития">
+            </label>
+          </div>
+
+          <div class="hint" style="margin-top: 12px;">
+            Новый департамент создается внутри выбранного госоргана. Новое управление создается внутри выбранного
+            департамента, а если департамент не выбран, то напрямую внутри госоргана.
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="users-toolbar">
+            <div>
+              <h2>Пользователи</h2>
+              <p class="panel-copy" style="margin-bottom: 0;">
+                Можно добавить строки вручную или вставить таблицу из Excel в формате TSV:
+                `ФИО`, `Должность`, `Структурное подразделение`, `ИИН`, `Почта`.
+              </p>
+            </div>
+            <div class="actions">
+              <button class="secondary" id="addRowButton" type="button">Добавить строку</button>
+              <button class="ghost" id="fillExampleButton" type="button">Заполнить пример</button>
+            </div>
+          </div>
+
+          <div class="grid" style="margin-bottom: 14px;">
+            <label>
+              Вставка из таблицы
+              <textarea id="bulkInput" placeholder="ФИО	Должность	Структурное подразделение	ИИН	Почта"></textarea>
+            </label>
+            <div class="actions">
+              <button class="secondary" id="parseBulkButton" type="button">Разобрать строки</button>
+              <button class="ghost" id="clearBulkButton" type="button">Очистить вставку</button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ФИО</th>
+                  <th>Имя</th>
+                  <th>Фамилия</th>
+                  <th>Логин</th>
+                  <th>Почта</th>
+                  <th>ИИН</th>
+                  <th>Должность</th>
+                  <th>Пароль</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Выполнение</h2>
+          <p class="panel-copy">
+            При запуске страница при необходимости создаст новую структуру, затем зарегистрирует пользователей по очереди.
+          </p>
+          <div class="actions" style="margin-bottom: 14px;">
+            <button class="primary" id="submitButton" type="button">Создать пользователей</button>
+            <button class="ghost" id="resetRowsButton" type="button">Сбросить строки</button>
+          </div>
+          <div id="resultStatus" class="status info">Ожидание действия.</div>
+        </section>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const state = {
+      tree: [],
+      ministries: [],
+      stateBodies: [],
+      departments: [],
+      divisions: [],
+      loaded: false,
+    };
+
+    const els = {
+      tokenInput: document.getElementById("tokenInput"),
+      tokenStatus: document.getElementById("tokenStatus"),
+      resultStatus: document.getElementById("resultStatus"),
+      ministrySelect: document.getElementById("ministrySelect"),
+      stateBodySelect: document.getElementById("stateBodySelect"),
+      departmentSelect: document.getElementById("departmentSelect"),
+      divisionSelect: document.getElementById("divisionSelect"),
+      createDepartmentToggle: document.getElementById("createDepartmentToggle"),
+      createDivisionToggle: document.getElementById("createDivisionToggle"),
+      createDepartmentField: document.getElementById("createDepartmentField"),
+      createDivisionField: document.getElementById("createDivisionField"),
+      newDepartmentName: document.getElementById("newDepartmentName"),
+      newDivisionName: document.getElementById("newDivisionName"),
+      usersTableBody: document.getElementById("usersTableBody"),
+      bulkInput: document.getElementById("bulkInput"),
+      summaryMinistry: document.getElementById("summaryMinistry"),
+      summaryStateBody: document.getElementById("summaryStateBody"),
+      summaryDepartment: document.getElementById("summaryDepartment"),
+      assignmentChips: document.getElementById("assignmentChips"),
+    };
+
+    function setStatus(target, kind, message) {
+      target.className = `status ${kind}`;
+      target.textContent = message;
+    }
+
+    function normalizeToken(raw) {
+      const trimmed = raw.trim();
+      if (!trimmed) return "";
+      return trimmed.toLowerCase().startsWith("bearer ") ? trimmed : `Bearer ${trimmed}`;
+    }
+
+    function authorizedFetch(url, options = {}) {
+      const token = normalizeToken(els.tokenInput.value);
+      const headers = new Headers(options.headers || {});
+      if (token) {
+        headers.set("Authorization", token);
+      }
+      return fetch(url, { ...options, headers });
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function slugify(value) {
+      return value
+        .normalize("NFKD")
+        .replace(/[^\w\s.-]/g, "")
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, ".");
+    }
+
+    function splitFullName(fullName) {
+      const parts = fullName.trim().split(/\s+/).filter(Boolean);
+      if (parts.length === 0) return { firstName: "", lastName: "" };
+      return {
+        lastName: parts[0] || "",
+        firstName: parts.slice(1).join(" ") || parts[0] || "",
+      };
+    }
+
+    function inferUsername(email, fullName, iin) {
+      if (email && email.includes("@")) {
+        return email.split("@")[0].toLowerCase();
+      }
+      const slug = slugify(fullName);
+      return slug || iin || "";
+    }
+
+    function inferPassword(iin) {
+      return iin ? `${iin}@Govtec1` : "";
+    }
+
+    function createRow(data = {}) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><input data-field="fullName" value="${escapeHtml(data.fullName || "")}" placeholder="ФИО"></td>
+        <td><input data-field="firstName" value="${escapeHtml(data.firstName || "")}" placeholder="Имя"></td>
+        <td><input data-field="lastName" value="${escapeHtml(data.lastName || "")}" placeholder="Фамилия"></td>
+        <td><input data-field="username" value="${escapeHtml(data.username || "")}" placeholder="username"></td>
+        <td><input data-field="email" type="email" value="${escapeHtml(data.email || "")}" placeholder="email@example.kz"></td>
+        <td><input data-field="iin" value="${escapeHtml(data.iin || "")}" placeholder="12 цифр"></td>
+        <td><input data-field="position" value="${escapeHtml(data.position || "")}" placeholder="Должность"></td>
+        <td><input data-field="password" value="${escapeHtml(data.password || "")}" placeholder="Временный пароль"></td>
+        <td class="row-actions">
+          <button class="ghost" type="button" data-action="copy">Копия</button>
+          <button class="ghost" type="button" data-action="delete">Удалить</button>
+        </td>
+      `;
+
+      tr.addEventListener("click", (event) => {
+        const button = event.target.closest("button[data-action]");
+        if (!button) return;
+        const action = button.dataset.action;
+        if (action === "delete") {
+          tr.remove();
+          if (!els.usersTableBody.children.length) createRow();
+        }
+        if (action === "copy") {
+          createRow(readRow(tr));
+        }
+      });
+
+      const fullNameInput = tr.querySelector('[data-field="fullName"]');
+      fullNameInput.addEventListener("blur", () => {
+        const row = readRow(tr);
+        if (!row.firstName || !row.lastName) {
+          const split = splitFullName(row.fullName);
+          tr.querySelector('[data-field="firstName"]').value = row.firstName || split.firstName;
+          tr.querySelector('[data-field="lastName"]').value = row.lastName || split.lastName;
+        }
+        if (!row.username) {
+          tr.querySelector('[data-field="username"]').value = inferUsername(row.email, row.fullName, row.iin);
+        }
+      });
+
+      const emailInput = tr.querySelector('[data-field="email"]');
+      emailInput.addEventListener("blur", () => {
+        const usernameInput = tr.querySelector('[data-field="username"]');
+        if (!usernameInput.value.trim()) {
+          usernameInput.value = inferUsername(emailInput.value, fullNameInput.value, tr.querySelector('[data-field="iin"]').value);
+        }
+      });
+
+      const iinInput = tr.querySelector('[data-field="iin"]');
+      iinInput.addEventListener("blur", () => {
+        const passwordInput = tr.querySelector('[data-field="password"]');
+        if (!passwordInput.value.trim()) {
+          passwordInput.value = inferPassword(iinInput.value.trim());
+        }
+      });
+
+      els.usersTableBody.appendChild(tr);
+      return tr;
+    }
+
+    function readRow(tr) {
+      const out = {};
+      tr.querySelectorAll("[data-field]").forEach((input) => {
+        out[input.dataset.field] = input.value.trim();
+      });
+      return out;
+    }
+
+    function setOptions(select, items, placeholder, includeEmpty = true, selectedValue = "") {
+      const options = [];
+      if (includeEmpty) {
+        options.push(`<option value="">${escapeHtml(placeholder)}</option>`);
+      }
+      for (const item of items) {
+        options.push(`<option value="${item.id}">${escapeHtml(item.name)}</option>`);
+      }
+      select.innerHTML = options.join("");
+      select.disabled = items.length === 0;
+
+      const normalizedSelectedValue = selectedValue == null ? "" : String(selectedValue);
+      if (normalizedSelectedValue && items.some((item) => String(item.id) === normalizedSelectedValue)) {
+        select.value = normalizedSelectedValue;
+      } else if (!normalizedSelectedValue) {
+        select.value = "";
+      }
+    }
+
+    function flattenHierarchy(tree) {
+      const ministries = [];
+      const ministryById = new Map();
+      const stateBodyById = new Map();
+      const departmentById = new Map();
+
+      function ensureMinistry(node) {
+        if (!ministryById.has(node.id)) {
+          const ministry = {
+            id: node.id,
+            name: node.name,
+            stateBodies: [],
+          };
+          ministryById.set(node.id, ministry);
+          ministries.push(ministry);
+        }
+        return ministryById.get(node.id);
+      }
+
+      function ensureStateBody(node, ministry) {
+        if (!ministry) return null;
+        if (!stateBodyById.has(node.id)) {
+          const stateBody = {
+            id: node.id,
+            name: node.name,
+            ministryId: ministry.id,
+            departments: [],
+            directDivisions: [],
+          };
+          stateBodyById.set(node.id, stateBody);
+          ministry.stateBodies.push(stateBody);
+        }
+        return stateBodyById.get(node.id);
+      }
+
+      function ensureDepartment(node, stateBody) {
+        if (!stateBody) return null;
+        if (!departmentById.has(node.id)) {
+          const department = {
+            id: node.id,
+            name: node.name,
+            stateBodyId: stateBody.id,
+            divisions: [],
+          };
+          departmentById.set(node.id, department);
+          stateBody.departments.push(department);
+        }
+        return departmentById.get(node.id);
+      }
+
+      function ensureDivision(node, stateBody, department) {
+        if (department) {
+          if (!department.divisions.some((item) => item.id === node.id)) {
+            department.divisions.push({
+              id: node.id,
+              name: node.name,
+              departmentId: department.id,
+              stateBodyId: stateBody ? stateBody.id : null,
+            });
+          }
+          return;
+        }
+
+        if (stateBody && !stateBody.directDivisions.some((item) => item.id === node.id)) {
+          stateBody.directDivisions.push({
+            id: node.id,
+            name: node.name,
+            stateBodyId: stateBody.id,
+            departmentId: null,
+          });
+        }
+      }
+
+      function walk(node, context = {}) {
+        let currentMinistry = context.ministry || null;
+        let currentStateBody = context.stateBody || null;
+        let currentDepartment = context.department || null;
+
+        if (node.type === "ministry") {
+          currentMinistry = ensureMinistry(node);
+          currentStateBody = null;
+          currentDepartment = null;
+        } else if (node.type === "state_body") {
+          currentStateBody = ensureStateBody(node, currentMinistry);
+          currentDepartment = null;
+        } else if (node.type === "department") {
+          currentDepartment = ensureDepartment(node, currentStateBody);
+        } else if (node.type === "division") {
+          ensureDivision(node, currentStateBody, currentDepartment);
+        }
+
+        for (const child of node.children || []) {
+          walk(child, {
+            ministry: currentMinistry,
+            stateBody: currentStateBody,
+            department: currentDepartment,
+          });
+        }
+      }
+
+      for (const node of tree) {
+        walk(node);
+      }
+
+      return ministries;
+    }
+
+    function getSelectedMinistry() {
+      const id = Number(els.ministrySelect.value);
+      return state.ministries.find((item) => item.id === id) || null;
+    }
+
+    function getSelectedStateBody() {
+      const ministry = getSelectedMinistry();
+      if (!ministry) return null;
+      const id = Number(els.stateBodySelect.value);
+      return ministry.stateBodies.find((item) => item.id === id) || null;
+    }
+
+    function getSelectedDepartment() {
+      const stateBody = getSelectedStateBody();
+      if (!stateBody) return null;
+      const id = Number(els.departmentSelect.value);
+      return stateBody.departments.find((item) => item.id === id) || null;
+    }
+
+    function getSelectedDivision() {
+      const department = getSelectedDepartment();
+      const stateBody = getSelectedStateBody();
+      const id = Number(els.divisionSelect.value);
+      if (!id || !stateBody) return null;
+
+      if (department) {
+        return department.divisions.find((item) => item.id === id) || null;
+      }
+      return stateBody.directDivisions.find((item) => item.id === id) || null;
+    }
+
+    function renderAssignmentSummary() {
+      const ministry = getSelectedMinistry();
+      const stateBody = getSelectedStateBody();
+      const department = getSelectedDepartment();
+      const division = getSelectedDivision();
+
+      els.summaryMinistry.textContent = ministry ? ministry.name : "Не выбрано";
+      els.summaryStateBody.textContent = stateBody ? stateBody.name : "Не выбрано";
+
+      const customDepartment = els.createDepartmentToggle.checked ? els.newDepartmentName.value.trim() : "";
+      const customDivision = els.createDivisionToggle.checked ? els.newDivisionName.value.trim() : "";
+      const departmentLabel = customDepartment || (department ? department.name : "Не выбрано");
+      const divisionLabel = customDivision || (division ? division.name : "");
+
+      els.summaryDepartment.textContent = divisionLabel
+        ? `${departmentLabel} / ${divisionLabel}`
+        : departmentLabel;
+
+      const chips = [];
+      if (ministry) chips.push(`ministry_id:${ministry.id}`);
+      if (stateBody) chips.push(`state_body_id:${stateBody.id}`);
+      if (department) chips.push(`department_id:${department.id}`);
+      if (division) chips.push(`division_id:${division.id}`);
+      if (customDepartment) chips.push(`new_department:${customDepartment}`);
+      if (customDivision) chips.push(`new_division:${customDivision}`);
+
+      els.assignmentChips.innerHTML = chips.map((chip) => `<span class="chip">${escapeHtml(chip)}</span>`).join("");
+    }
+
+    function refreshSelectors() {
+      const selectedStateBodyValue = els.stateBodySelect.value;
+      const selectedDepartmentValue = els.departmentSelect.value;
+      const selectedDivisionValue = els.divisionSelect.value;
+
+      const ministry = getSelectedMinistry();
+      setOptions(
+        els.stateBodySelect,
+        ministry ? ministry.stateBodies : [],
+        ministry ? "Выберите госорган" : "Выберите министерство",
+        true,
+        selectedStateBodyValue
+      );
+
+      const stateBody = getSelectedStateBody();
+      setOptions(
+        els.departmentSelect,
+        stateBody ? stateBody.departments : [],
+        stateBody ? "Опционально" : "Сначала выберите госорган",
+        true,
+        selectedDepartmentValue
+      );
+
+      const department = getSelectedDepartment();
+      const divisions = department
+        ? department.divisions
+        : stateBody
+          ? stateBody.directDivisions
+          : [];
+
+      setOptions(
+        els.divisionSelect,
+        divisions,
+        department ? "Опционально" : "Выберите управление или оставьте пусто",
+        true,
+        selectedDivisionValue
+      );
+
+      renderAssignmentSummary();
+    }
+
+    async function loadTree() {
+      setStatus(els.tokenStatus, "info", "Загрузка дерева структуры...");
+      try {
+        const response = await fetch("/api/v1/hierarchy/public/tree");
+        if (!response.ok) {
+          throw new Error(`Не удалось загрузить дерево: HTTP ${response.status}`);
+        }
+        const payload = await response.json();
+        state.tree = payload.tree || [];
+        state.ministries = flattenHierarchy(state.tree);
+        state.loaded = true;
+        setOptions(els.ministrySelect, state.ministries, "Выберите министерство");
+        setStatus(els.tokenStatus, "success", `Структура загружена. Найдено министерств: ${state.ministries.length}.`);
+        refreshSelectors();
+      } catch (error) {
+        setStatus(els.tokenStatus, "error", error.message || "Ошибка загрузки дерева.");
+      }
+    }
+
+    function parseBulkRows() {
+      const lines = els.bulkInput.value
+        .split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter(Boolean);
+
+      if (!lines.length) {
+        setStatus(els.resultStatus, "error", "Нет строк для разбора.");
+        return;
+      }
+
+      const parsed = [];
+      for (const line of lines) {
+        const columns = line.split("\t");
+        if (columns.length < 5) continue;
+        const [fullName, position, , iin, email] = columns;
+        const split = splitFullName(fullName);
+        parsed.push({
+          fullName,
+          firstName: split.firstName,
+          lastName: split.lastName,
+          username: inferUsername(email, fullName, iin),
+          email,
+          iin,
+          position,
+          password: inferPassword(iin),
+        });
+      }
+
+      if (!parsed.length) {
+        setStatus(els.resultStatus, "error", "Не удалось разобрать TSV. Ожидается минимум 5 колонок.");
+        return;
+      }
+
+      els.usersTableBody.innerHTML = "";
+      parsed.forEach((row) => createRow(row));
+      setStatus(els.resultStatus, "success", `Добавлено строк: ${parsed.length}.`);
+    }
+
+    function validateRows() {
+      const rows = Array.from(els.usersTableBody.querySelectorAll("tr")).map(readRow);
+      if (!rows.length) throw new Error("Нет пользователей для создания.");
+
+      rows.forEach((row, index) => {
+        const rowNo = index + 1;
+        if (!row.firstName) throw new Error(`Строка ${rowNo}: заполните имя.`);
+        if (!row.lastName) throw new Error(`Строка ${rowNo}: заполните фамилию.`);
+        if (!row.email) throw new Error(`Строка ${rowNo}: заполните почту.`);
+        if (!row.username) throw new Error(`Строка ${rowNo}: заполните логин.`);
+        if (!row.iin || !/^\d{12}$/.test(row.iin)) throw new Error(`Строка ${rowNo}: ИИН должен содержать 12 цифр.`);
+        if (!row.password || row.password.length < 8) throw new Error(`Строка ${rowNo}: пароль должен быть не короче 8 символов.`);
+      });
+
+      return rows;
+    }
+
+    async function createUnit(payload) {
+      const response = await authorizedFetch("/api/v1/hierarchy/units", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "accept": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Не удалось создать ${payload.type}: HTTP ${response.status}. ${text}`);
+      }
+
+      return response.json();
+    }
+
+    async function createUser(payload) {
+      const response = await authorizedFetch("/api/v1/users", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "accept": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`HTTP ${response.status}. ${text}`);
+      }
+
+      return response.json();
+    }
+
+    async function ensureStructure() {
+      const ministry = getSelectedMinistry();
+      const stateBody = getSelectedStateBody();
+      const department = getSelectedDepartment();
+      const division = getSelectedDivision();
+
+      if (!ministry) throw new Error("Выберите министерство.");
+      if (!stateBody) throw new Error("Выберите госорган.");
+
+      const assignment = {
+        ministryId: ministry.id,
+        stateBodyId: stateBody.id,
+        departmentId: department ? department.id : null,
+        divisionId: division ? division.id : null,
+      };
+
+      if (els.createDepartmentToggle.checked) {
+        const name = els.newDepartmentName.value.trim();
+        if (!name) throw new Error("Укажите название нового департамента.");
+
+        const createdDepartment = await createUnit({
+          type: "department",
+          name,
+          state_body_id: stateBody.id,
+        });
+
+        assignment.departmentId = createdDepartment.id;
+        assignment.divisionId = null;
+      }
+
+      if (els.createDivisionToggle.checked) {
+        const name = els.newDivisionName.value.trim();
+        if (!name) throw new Error("Укажите название нового управления.");
+
+        const payload = {
+          type: "division",
+          name,
+        };
+
+        if (assignment.departmentId) {
+          payload.department_id = assignment.departmentId;
+        } else {
+          payload.state_body_id = assignment.stateBodyId;
+        }
+
+        const createdDivision = await createUnit(payload);
+        assignment.divisionId = createdDivision.id;
+      }
+
+      return assignment;
+    }
+
+    async function submitUsers() {
+      const token = normalizeToken(els.tokenInput.value);
+      if (!token) {
+        setStatus(els.resultStatus, "error", "Нужен Bearer token.");
+        return;
+      }
+
+      try {
+        const rows = validateRows();
+        document.getElementById("submitButton").disabled = true;
+        setStatus(els.resultStatus, "info", "Проверка структуры и создание пользователей...");
+
+        const assignment = await ensureStructure();
+        const created = [];
+        const failed = [];
+
+        for (const row of rows) {
+          try {
+            const payload = {
+              email: row.email.toLowerCase(),
+              username: row.username,
+              password: row.password,
+              first_name: row.firstName,
+              last_name: row.lastName,
+              iin: row.iin,
+              role: "user",
+              position: row.position,
+              ministry_id: assignment.ministryId,
+              state_body_id: assignment.stateBodyId,
+            };
+
+            if (assignment.departmentId) payload.department_id = assignment.departmentId;
+            if (assignment.divisionId) payload.division_id = assignment.divisionId;
+
+            const response = await createUser(payload);
+            created.push(`${row.lastName} ${row.firstName} -> id:${response.id}`);
+          } catch (error) {
+            failed.push(`${row.lastName} ${row.firstName}: ${error.message}`);
+          }
+        }
+
+        const messages = [];
+        if (created.length) {
+          messages.push(`Создано: ${created.length}`);
+          messages.push(created.join("\n"));
+        }
+        if (failed.length) {
+          messages.push(`Ошибки: ${failed.length}`);
+          messages.push(failed.join("\n"));
+        }
+
+        setStatus(els.resultStatus, failed.length ? "error" : "success", messages.join("\n\n"));
+
+        if (!failed.length) {
+          els.createDepartmentToggle.checked = false;
+          els.createDivisionToggle.checked = false;
+          els.newDepartmentName.value = "";
+          els.newDivisionName.value = "";
+          toggleCreateFields();
+          await loadTree();
+        }
+      } catch (error) {
+        setStatus(els.resultStatus, "error", error.message || "Ошибка создания пользователей.");
+      } finally {
+        document.getElementById("submitButton").disabled = false;
+      }
+    }
+
+    function toggleCreateFields() {
+      els.createDepartmentField.classList.toggle("hidden", !els.createDepartmentToggle.checked);
+      els.createDivisionField.classList.toggle("hidden", !els.createDivisionToggle.checked);
+      renderAssignmentSummary();
+    }
+
+    function resetRows() {
+      els.usersTableBody.innerHTML = "";
+      createRow();
+      setStatus(els.resultStatus, "info", "Строки очищены.");
+    }
+
+    function fillExample() {
+      const sample = [
+        ["Аманкулов Даир Бакытович", "Аналитик", "000627551224", "d.amankulov@govtec.kz"],
+        ["Жолдаспеков Ернұр Ерболұлы", "Senior director направления промышленного блока", "990827350562", "e.zholdaspekov@govtec.kz"],
+        ["Омаров Рахат Нурланулы", "Ведущий бизнес-аналитик/Team lead", "000602550031", "r.omarov@govtec.kz"],
+        ["Тастимова Маржан Ахановна", "Chief senior director", "840303450679", "m.tastimova@govtec.kz"],
+      ];
+
+      els.usersTableBody.innerHTML = "";
+      for (const [fullName, position, iin, email] of sample) {
+        const split = splitFullName(fullName);
+        createRow({
+          fullName,
+          firstName: split.firstName,
+          lastName: split.lastName,
+          username: inferUsername(email, fullName, iin),
+          email,
+          iin,
+          position,
+          password: inferPassword(iin),
+        });
+      }
+
+      if (!els.newDepartmentName.value.trim()) {
+        els.createDepartmentToggle.checked = true;
+        els.newDepartmentName.value = "Центр цифровой трансформации";
+        toggleCreateFields();
+      }
+
+      setStatus(els.resultStatus, "success", "Пример заполнен.");
+    }
+
+    document.getElementById("loadTreeButton").addEventListener("click", loadTree);
+    document.getElementById("clearTokenButton").addEventListener("click", () => {
+      els.tokenInput.value = "";
+      setStatus(els.tokenStatus, "info", "Токен очищен.");
+    });
+    document.getElementById("addRowButton").addEventListener("click", () => createRow());
+    document.getElementById("fillExampleButton").addEventListener("click", fillExample);
+    document.getElementById("parseBulkButton").addEventListener("click", parseBulkRows);
+    document.getElementById("clearBulkButton").addEventListener("click", () => {
+      els.bulkInput.value = "";
+    });
+    document.getElementById("submitButton").addEventListener("click", submitUsers);
+    document.getElementById("resetRowsButton").addEventListener("click", resetRows);
+
+    els.ministrySelect.addEventListener("change", refreshSelectors);
+    els.stateBodySelect.addEventListener("change", refreshSelectors);
+    els.departmentSelect.addEventListener("change", refreshSelectors);
+    els.divisionSelect.addEventListener("change", renderAssignmentSummary);
+    els.createDepartmentToggle.addEventListener("change", toggleCreateFields);
+    els.createDivisionToggle.addEventListener("change", toggleCreateFields);
+    els.newDepartmentName.addEventListener("input", renderAssignmentSummary);
+    els.newDivisionName.addEventListener("input", renderAssignmentSummary);
+
+    createRow();
+    renderAssignmentSummary();
+  </script>
+</body>
+</html>

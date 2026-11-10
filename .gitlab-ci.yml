@@ -1,0 +1,258 @@
+stages:
+  - lint
+  - test
+  - build
+  - deploy
+
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+    - when: never
+
+default:
+  tags:
+    - alem-superapp-runners
+  interruptible: true
+
+variables:
+  GO_VERSION: "1.24.7"
+  APP_NAME: "messenger"
+  DEPLOY_DIR: "/home/administrator/alem-super-app-backend"
+  HEALTHCHECK_URL: "http://localhost:18081/health"
+  GOMODCACHE: "/home/gitlab-runner/.cache/go/pkg/mod"
+  GOCACHE: "/home/gitlab-runner/.cache/go-build"
+  GOLANGCI_LINT_CACHE: "/home/gitlab-runner/.cache/golangci-lint"
+  GOPROXY: "https://proxy.golang.org,direct"
+  GOSUMDB: "sum.golang.org"
+  GO_BUILDER_IMAGE_NAME: "golang"
+  GO_BUILDER_IMAGE_TAG: "1.24.7-alpine3.22"
+  RUNTIME_IMAGE_NAME: "alpine"
+  RUNTIME_IMAGE_TAG: "3.22"
+
+before_script:
+  - export PATH=/usr/local/go/bin:$HOME/go/bin:$PATH
+  - mkdir -p "$GOMODCACHE" "$GOCACHE" "$GOLANGCI_LINT_CACHE"
+  - go version
+  - golangci-lint --version || true
+
+after_script:
+  - chmod -R u+rwX "$CI_PROJECT_DIR" || true
+
+lint:
+  stage: lint
+  timeout: 5m
+  interruptible: true
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+  script:
+    - echo "Downloading Go modules..."
+    - |
+      set -eu
+      for i in 1 2 3; do
+        if go mod download; then
+          break
+        fi
+        if [ "$i" -eq 3 ]; then
+          echo "ERROR: go mod download failed after 3 attempts"
+          exit 1
+        fi
+        echo "go mod download failed, retry ${i}/3 in 5s..."
+        sleep 5
+      done
+    - echo "Running fast golangci-lint..."
+    - golangci-lint --version
+    - |
+      set -eu
+      echo "Linting ./... package tree..."
+      golangci-lint run ./... \
+        --timeout=3m \
+        --disable-all \
+        --enable=govet \
+        --enable=ineffassign \
+        --enable=staticcheck \
+        --enable=unused \
+        --enable=gofmt \
+        --tests=false \
+        --exclude-dirs=internal/internal \
+        --out-format=colored-line-number \
+        --issues-exit-code=1
+
+test:
+  stage: test
+  timeout: 10m
+  interruptible: true
+  needs:
+    - lint
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "main"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+  script:
+    - echo "Preparing fast compile-only test sweep..."
+    - |
+      set -eu
+      PKGS="$(go list ./... 2>/dev/null | grep -v '/internal/internal/' | grep -v '^github.com/skydy/messenger/internal/service$')"
+      test -n "$PKGS"
+      echo "Running compile-only go test over filtered package set..."
+      go test $PKGS -run '^$' -count=1 -p 2 -timeout=5m
+
+build:
+  stage: build
+  timeout: 15m
+  interruptible: true
+  needs:
+    - test
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"'
+  script:
+    - echo "Building Docker image..."
+    - |
+      set -eu
+      command -v docker >/dev/null 2>&1 || {
+        echo "ERROR: docker is not installed on the shell runner"
+        exit 1
+      }
+      docker info >/dev/null 2>&1 || {
+        echo "ERROR: shell runner user cannot access Docker"
+        exit 1
+      }
+      export DOCKER_BUILDKIT=1
+      DIRECT_GO_BUILDER_IMAGE="${GO_BUILDER_IMAGE_NAME}:${GO_BUILDER_IMAGE_TAG}"
+      DIRECT_RUNTIME_IMAGE="${RUNTIME_IMAGE_NAME}:${RUNTIME_IMAGE_TAG}"
+      GO_BUILDER_IMAGE="${DIRECT_GO_BUILDER_IMAGE}"
+      RUNTIME_IMAGE="${DIRECT_RUNTIME_IMAGE}"
+      USE_PROXY_IMAGES="false"
+      if [ -n "${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX:-}" ]; then
+        if [ -n "${CI_DEPENDENCY_PROXY_USER:-}" ] && [ -n "${CI_DEPENDENCY_PROXY_PASSWORD:-}" ] && [ -n "${CI_DEPENDENCY_PROXY_SERVER:-}" ]; then
+          echo "${CI_DEPENDENCY_PROXY_PASSWORD}" | docker login "${CI_DEPENDENCY_PROXY_SERVER}" \
+            --username "${CI_DEPENDENCY_PROXY_USER}" \
+            --password-stdin
+          GO_BUILDER_IMAGE="${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/${GO_BUILDER_IMAGE_NAME}:${GO_BUILDER_IMAGE_TAG}"
+          RUNTIME_IMAGE="${CI_DEPENDENCY_PROXY_GROUP_IMAGE_PREFIX}/${RUNTIME_IMAGE_NAME}:${RUNTIME_IMAGE_TAG}"
+          USE_PROXY_IMAGES="true"
+        else
+          echo "WARN: dependency proxy credentials are unavailable, using Docker Hub image names"
+        fi
+      fi
+      build_image() {
+        local builder_image="$1"
+        local runtime_image="$2"
+        echo "Using builder image: ${builder_image}"
+        echo "Using runtime image: ${runtime_image}"
+        docker build -t "${APP_NAME}:latest" \
+          --build-arg GO_BUILDER_IMAGE="${builder_image}" \
+          --build-arg RUNTIME_IMAGE="${runtime_image}" \
+          --build-arg VERSION="${CI_COMMIT_SHA}" \
+          --build-arg BUILD_TIME="${CI_PIPELINE_ID}" \
+          .
+      }
+      if [ "${USE_PROXY_IMAGES}" = "true" ]; then
+        for i in 1 2 3; do
+          if build_image "${GO_BUILDER_IMAGE}" "${RUNTIME_IMAGE}"; then
+            exit 0
+          fi
+          echo "dependency proxy build failed, retry ${i}/3 in 5s..."
+          sleep 5
+        done
+        echo "WARN: dependency proxy build failed after 3 attempts, falling back to Docker Hub image names"
+      fi
+      for i in 1 2 3; do
+        if build_image "${DIRECT_GO_BUILDER_IMAGE}" "${DIRECT_RUNTIME_IMAGE}"; then
+          exit 0
+        fi
+        if [ "$i" -eq 3 ]; then
+          echo "ERROR: docker build failed after 3 direct attempts"
+          exit 1
+        fi
+        echo "direct docker build failed, retry ${i}/3 in 5s..."
+        sleep 5
+      done
+
+deploy:
+  stage: deploy
+  timeout: 10m
+  needs:
+    - build
+  resource_group: production
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == "main"'
+  script:
+    - echo "Deploying api service..."
+    - |
+      set -eu
+
+      command -v docker >/dev/null 2>&1 || {
+        echo "ERROR: docker is not installed on the shell runner"
+        exit 1
+      }
+      command -v curl >/dev/null 2>&1 || {
+        echo "ERROR: curl is not installed on the shell runner"
+        exit 1
+      }
+      docker info >/dev/null 2>&1 || {
+        echo "ERROR: shell runner user cannot access Docker"
+        exit 1
+      }
+
+      if docker compose version >/dev/null 2>&1; then
+        DC="docker compose"
+      elif command -v docker-compose >/dev/null 2>&1; then
+        DC="docker-compose"
+      else
+        echo "ERROR: neither 'docker compose' nor 'docker-compose' is available"
+        exit 1
+      fi
+
+      test -d "$DEPLOY_DIR" || {
+        echo "ERROR: deploy directory '$DEPLOY_DIR' does not exist"
+        exit 1
+      }
+      test -x "$DEPLOY_DIR" || {
+        echo "ERROR: deploy directory '$DEPLOY_DIR' is not accessible"
+        exit 1
+      }
+
+      cd "$DEPLOY_DIR"
+      if [ -f docker-compose.yml ]; then
+        test -w docker-compose.yml || {
+          echo "ERROR: '$DEPLOY_DIR/docker-compose.yml' is not writable"
+          exit 1
+        }
+        if cp docker-compose.yml "docker-compose.yml.bak.${CI_PIPELINE_ID}"; then
+          echo "Backup created: $DEPLOY_DIR/docker-compose.yml.bak.${CI_PIPELINE_ID}"
+        else
+          BACKUP_PATH="/tmp/alem-super-app-backend-docker-compose.${CI_PIPELINE_ID}.bak"
+          cp docker-compose.yml "$BACKUP_PATH"
+          echo "WARN: backup in deploy dir failed, saved fallback backup to $BACKUP_PATH"
+        fi
+      else
+        test -w "$DEPLOY_DIR" || {
+          echo "ERROR: deploy directory '$DEPLOY_DIR' is not writable to create docker-compose.yml"
+          exit 1
+        }
+      fi
+
+      if [ -f "$DEPLOY_DIR/docker-compose.yml" ]; then
+        cat "$CI_PROJECT_DIR/docker-compose.yml" > "$DEPLOY_DIR/docker-compose.yml"
+      else
+        cp -f "$CI_PROJECT_DIR/docker-compose.yml" "$DEPLOY_DIR/docker-compose.yml"
+      fi
+
+      $DC up -d --no-deps --force-recreate api
+
+      echo "Waiting for healthcheck..."
+      for i in $(seq 1 45); do
+        if curl -fsS "$HEALTHCHECK_URL" >/dev/null 2>&1; then
+          echo "OK: healthcheck passed: $HEALTHCHECK_URL"
+          exit 0
+        fi
+        echo "Waiting healthcheck attempt $i/45..."
+        sleep 2
+      done
+
+      echo "ERROR: healthcheck failed: $HEALTHCHECK_URL"
+      $DC ps || true
+      docker logs --tail=200 messenger-api || true
+      docker inspect messenger-api || true
+      exit 1

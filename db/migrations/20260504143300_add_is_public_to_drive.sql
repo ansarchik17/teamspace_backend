@@ -1,0 +1,7 @@
+-- +goose Up
+ALTER TABLE files ADD COLUMN is_public BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE folders ADD COLUMN is_public BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- +goose Down
+ALTER TABLE files DROP COLUMN is_public;
+ALTER TABLE folders DROP COLUMN is_public;

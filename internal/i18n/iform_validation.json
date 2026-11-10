@@ -1,0 +1,22 @@
+{
+  "ru": {
+    "iform.validation.IIN_INVALID": "Введите ИИН из 12 цифр.",
+    "iform.validation.ONBOARDING_CREDENTIALS_REQUIRED": "Сначала подготовьте первый вход сотрудника в HR-задаче.",
+    "iform.validation.DATE_INVALID": "Введите существующую дату.",
+    "iform.validation.DATE_ORDER_INVALID": "Дата окончания не может быть раньше даты начала.",
+    "iform.validation.DATE_RANGE_REQUIRED": "Укажите начало и конец периода.",
+    "iform.validation.DELEGATION_PERIOD_INVALID": "Выберите другого согласующего и действующий период замещения.",
+    "iform.validation.DELEGATION_APPROVER_REQUIRED": "Оба сотрудника должны иметь право согласования в этой компании.",
+    "iform.validation.DELEGATION_OVERLAP": "На этот период уже назначено замещение. Пересечения и цепочки не поддерживаются."
+  },
+  "kk": {
+    "iform.validation.IIN_INVALID": "12 цифрдан тұратын ЖСН енгізіңіз.",
+    "iform.validation.ONBOARDING_CREDENTIALS_REQUIRED": "Алдымен HR тапсырмасында қызметкердің алғашқы кіруін дайындаңыз.",
+    "iform.validation.DATE_INVALID": "Бар күнді енгізіңіз.",
+    "iform.validation.DATE_ORDER_INVALID": "Аяқталу күні басталу күнінен бұрын болмауы керек.",
+    "iform.validation.DATE_RANGE_REQUIRED": "Кезеңнің басталу және аяқталу күндерін көрсетіңіз.",
+    "iform.validation.DELEGATION_PERIOD_INVALID": "Басқа келісушіні және жарамды алмастыру кезеңін таңдаңыз.",
+    "iform.validation.DELEGATION_APPROVER_REQUIRED": "Екі қызметкердің де осы компанияда келісу құқығы болуы керек.",
+    "iform.validation.DELEGATION_OVERLAP": "Бұл кезеңге алмастырушы тағайындалған. Қабаттасу мен тізбектерге қолдау көрсетілмейді."
+  }
+}

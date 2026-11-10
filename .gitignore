@@ -1,0 +1,122 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+*.test
+*.out
+
+# Go workspace file
+go.work
+
+# Output of go coverage tools
+*.out
+coverage.out
+coverage.html
+
+# Dependency directories
+vendor/
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment files
+.env
+.env.*
+.env.local
+.env.*.local
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# Database files
+*.db
+*.sqlite
+
+# Build artifacts
+dist/
+build/
+tmp/
+.gocache/
+
+# Air (hot reload) tmp files
+tmp/
+
+# Documentation
+# docs/swagger.json
+# docs/swagger.yaml
+# docs/docs.go
+
+# OS specific
+Thumbs.db
+.DS_Store
+
+# Test binary
+*.test
+
+# Output of the go coverage tool
+*.cover
+
+# go mod download cache
+go.sum.backup
+
+# Firebase
+*.json
+!package.json
+!manifest.json
+!postman_collection.json
+!docs/swagger.json
+!deploy/onlyoffice/auto-save.json
+messenger-f4d0a-firebase-adminsdk-fbsvc-0236ebb820.json
+
+# Secrets and credentials
+*.p8
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+key/
+secrets/
+*firebase*.json
+*service-account*.json
+
+.git
+**/tmp
+**/temp
+**/.idea
+**/.vscode
+**/node_modules
+**/dist
+**/build
+**/*.log
+api
+api.exe
+.tmp/*
+.tmp-gocache/
+.tmp-gomodcache/
+.tmp-golangci-lint-cache/
+.cache/
+/cache/*
+graphify-out/
+
+!internal/service/ai_context/catalog.json
+!internal/i18n/*.json
+!docs/contracts/odo-assignment-event.schema.json
+!docs/contracts/examples/odo-assignment-events.json
+
+# Local AI agent instructions
+/AGENTS.md
+
+# Temporary CI packaging artifacts.
+/ci-out/

@@ -1,0 +1,373 @@
+{
+  "checked_at_utc": "2026-11-02T10:06:37.612370+00:00",
+  "environment": "https://sultan-corp.teamspace.kz",
+  "scope": "Authenticated API login, SSO exchanges and read-only application operations; browser UI not available",
+  "checks": [
+    {
+      "check": "Workspace password login",
+      "http": 200,
+      "seconds": 0.51,
+      "X-Request-ID": "1793613990526241913-19fda1a7",
+      "X-Trace-ID": "dc52d3ed-8aa3-4138-93db-80dbc88ea33e",
+      "must_change_password": true,
+      "cannot_skip_password_change": true
+    },
+    {
+      "check": "Workspace current profile",
+      "http": 200,
+      "seconds": 0.13,
+      "X-Request-ID": "1793613991019121271-507f4d72",
+      "X-Trace-ID": "108fc38b-c689-4075-8f3e-15cdc4382c26",
+      "response_fields": [
+        "language",
+        "id",
+        "iin",
+        "position",
+        "is_active",
+        "availability_status",
+        "can_view_full_drive_activity",
+        "can_view_full_drive_activity_by_position",
+        "can_view_full_drive_activity_effective",
+        "is_first_login",
+        "last_login_at",
+        "last_seen_at",
+        "created_at",
+        "role",
+        "organization_id",
+        "is_support"
+      ]
+    },
+    {
+      "check": "Workspace account identity",
+      "matches_requested_login": true
+    },
+    {
+      "check": "Workspace current company",
+      "http": 200,
+      "seconds": 0.13,
+      "X-Request-ID": "1793613991157937584-69b6d944",
+      "X-Trace-ID": "4419667d-431d-4265-99f0-76110cb27da2",
+      "response_fields": [
+        "id",
+        "slug",
+        "status",
+        "owner_id",
+        "can_manage_structure",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    {
+      "check": "Workspace company integration configuration",
+      "http": 200,
+      "seconds": 0.27,
+      "X-Request-ID": "1793613991280069473-afeb37ac",
+      "X-Trace-ID": "96e45a5a-4c72-41f1-9846-f57d097fdac0",
+      "response_fields": [
+        "member_positions",
+        "positions",
+        "catalog",
+        "dependencies",
+        "unavailable_permissions",
+        "apps",
+        "sd_company_id"
+      ]
+    },
+    {
+      "check": "Workspace SD module state",
+      "sd_company_linked": true,
+      "sd": {
+        "available": true,
+        "module_enabled": true,
+        "enabled": true,
+        "revision": 1
+      }
+    },
+    {
+      "check": "Growy CRM context",
+      "http": 409,
+      "seconds": 0.52,
+      "X-Request-ID": "1793613991560935121-969a2e56",
+      "X-Trace-ID": "ce899863-59bc-4ea9-b505-e74b189d0ffa",
+      "error": {
+        "code": "growy_exchange_failed",
+        "message": "Данные изменились. Обновите страницу и повторите действие.",
+        "user_message": "Данные изменились. Обновите страницу и повторите действие."
+      }
+    },
+    {
+      "check": "Growy training assignments",
+      "http": 200,
+      "seconds": 0.55,
+      "X-Request-ID": "1793613992098919005-2948a7df",
+      "X-Trace-ID": "c113de1a-b19a-4d24-855d-408dbd0f6723",
+      "in_progress_count": 0,
+      "in_progress_returned": 0,
+      "assigned_returned": 0
+    },
+    {
+      "check": "Growy personal course enrollments",
+      "http": 200,
+      "seconds": 0.5,
+      "X-Request-ID": "1793613992637815295-a60bf60e",
+      "X-Trace-ID": "1c4accf6-301d-4a2e-9442-15d650775b47",
+      "items_returned": 4
+    },
+    {
+      "check": "Growy personal course progress detail",
+      "http": 200,
+      "seconds": 0.53,
+      "X-Request-ID": "1793613993129813594-192885be",
+      "X-Trace-ID": "927c3064-ef19-496f-bd82-2921a946a63e",
+      "response_fields": [
+        "enrollment",
+        "employee",
+        "training_program",
+        "modules"
+      ]
+    },
+    {
+      "check": "Growy CRM leads",
+      "http": 409,
+      "seconds": 0.31,
+      "X-Request-ID": "1793613993650202733-53587578",
+      "X-Trace-ID": "62c40458-b8e1-49b0-b3c1-b42635a514f1",
+      "error": {
+        "code": "growy_exchange_failed",
+        "message": "Данные изменились. Обновите страницу и повторите действие.",
+        "user_message": "Данные изменились. Обновите страницу и повторите действие."
+      }
+    },
+    {
+      "check": "Growy CRM deals",
+      "http": 409,
+      "seconds": 0.44,
+      "X-Request-ID": "1793613994104597797-9aaa4d0b",
+      "X-Trace-ID": "12ced718-c11f-494b-ba25-49cc3c2fa62a",
+      "error": {
+        "code": "growy_exchange_failed",
+        "message": "Данные изменились. Обновите страницу и повторите действие.",
+        "user_message": "Данные изменились. Обновите страницу и повторите действие."
+      }
+    },
+    {
+      "check": "Growy WhatsApp integration status",
+      "http": 409,
+      "seconds": 0.31,
+      "X-Request-ID": "1793613994432041951-d5395123",
+      "X-Trace-ID": "7fdc4eb1-7f9e-43b6-8ee3-58e5101acb23",
+      "error": {
+        "code": "growy_exchange_failed",
+        "message": "Данные изменились. Обновите страницу и повторите действие.",
+        "user_message": "Данные изменились. Обновите страницу и повторите действие."
+      }
+    },
+    {
+      "check": "Growy browser handoff issuance",
+      "http": 200,
+      "seconds": 0.14,
+      "X-Request-ID": "1793613994717070857-cc6b9f7b",
+      "X-Trace-ID": "077aaa29-fa82-417e-87d3-cc2cd0f6db68",
+      "response_fields": [
+        "expires_in"
+      ]
+    },
+    {
+      "check": "Growy LMS user session exchange",
+      "http": 200,
+      "seconds": 0.19,
+      "must_change_password": false
+    },
+    {
+      "check": "Growy LMS direct personal enrollments",
+      "http": 200,
+      "seconds": 0.23,
+      "items_returned": 4
+    },
+    {
+      "check": "Growy LMS direct versus Workspace enrollment identity",
+      "same_enrollment_ids": true
+    },
+    {
+      "check": "SenimDesk Workspace handoff issuance",
+      "http": 200,
+      "seconds": 0.17,
+      "X-Request-ID": "1793613995313288023-cb12ac83",
+      "X-Trace-ID": "2237ef58-0e4f-4058-80af-75f398ff7009",
+      "response_fields": [
+        "redirect_url"
+      ]
+    },
+    {
+      "check": "SenimDesk handoff destination",
+      "matches_expected_company_host": true
+    },
+    {
+      "check": "SenimDesk browser-bound code redemption",
+      "http": 200,
+      "seconds": 0.11,
+      "response_fields": [
+        "expires_in",
+        "slug"
+      ]
+    },
+    {
+      "check": "SenimDesk current profile",
+      "http": 200,
+      "seconds": 0.18,
+      "response_fields": [
+        "id",
+        "company_id",
+        "company",
+        "role",
+        "extended_role",
+        "is_available",
+        "is_active",
+        "created_at",
+        "groups",
+        "rbac_roles"
+      ]
+    },
+    {
+      "check": "SenimDesk effective permissions",
+      "http": 200,
+      "seconds": 0.1,
+      "managed_by_workspace": true,
+      "permission_resources": 12,
+      "has_tickets_read": true
+    },
+    {
+      "check": "SenimDesk current company",
+      "http": 200,
+      "seconds": 0.12,
+      "response_fields": [
+        "id",
+        "owner_id",
+        "is_tenant_root",
+        "client_type",
+        "address",
+        "is_active",
+        "created_at",
+        "updated_at"
+      ]
+    },
+    {
+      "check": "SenimDesk company binding",
+      "matches_workspace_link": true
+    },
+    {
+      "check": "SenimDesk ticket dashboard",
+      "http": 200,
+      "seconds": 0.16,
+      "open_count": 3,
+      "in_progress_count": 0
+    },
+    {
+      "check": "SenimDesk ticket list",
+      "http": 200,
+      "seconds": 0.2,
+      "items_returned": 1
+    },
+    {
+      "check": "SenimDesk ticket list with defaults",
+      "http": 200,
+      "seconds": 0.14,
+      "items_returned": 10
+    },
+    {
+      "check": "SenimDesk ticket dashboard with defaults",
+      "http": 200,
+      "seconds": 0.18,
+      "open_count": 3,
+      "in_progress_count": 0
+    },
+    {
+      "check": "SenimDesk projects",
+      "http": 200,
+      "seconds": 0.2,
+      "items_returned": 3
+    },
+    {
+      "check": "SenimDesk object list",
+      "http": 200,
+      "seconds": 0.14,
+      "items_returned": 5
+    },
+    {
+      "check": "SenimDesk ticket status dictionary",
+      "http": 200,
+      "seconds": 0.11,
+      "items_returned": 5
+    },
+    {
+      "check": "SenimDesk ticket priority dictionary",
+      "http": 200,
+      "seconds": 0.23,
+      "items_returned": 4
+    },
+    {
+      "check": "SenimDesk equipment category dictionary",
+      "http": 200,
+      "seconds": 0.11,
+      "items_returned": 1
+    },
+    {
+      "check": "SenimDesk ticket type dictionary",
+      "http": 200,
+      "seconds": 0.13,
+      "items_returned": 1
+    },
+    {
+      "check": "Workspace SenimDesk open ticket count",
+      "http": 200,
+      "seconds": 0.16,
+      "X-Request-ID": "1793613997551228050-8c95b679",
+      "X-Trace-ID": "44e23a85-15a2-4340-a444-5250e14a3cb3",
+      "count": 3
+    }
+  ],
+  "deployed_fixes": {
+    "senimdesk_backend": {
+      "commit": "cbd5690",
+      "workflow": "https://github.com/west6ide/workspace-sd-backend/actions/runs/41422541612",
+      "conclusion": "success"
+    },
+    "senimdesk_frontend": {
+      "commit": "7740586",
+      "workflow": "https://github.com/west6ide/workspace-sd-front/actions/runs/41424654821",
+      "conclusion": "success"
+    }
+  },
+  "findings": [
+    {
+      "component": "Growy CRM and WhatsApp",
+      "status": "open",
+      "confirmed": "Context, leads, deals and WhatsApp status each return HTTP 409 growy_exchange_failed. The Workspace handler emits this code after the CRM session exchange fails; current provisioning and ticket signing were passed.",
+      "probable_cause": "The documented integration contract describes HTTP 409 for an existing Growy email requiring verified Workspace identity binding. The exact upstream conflict has not been confirmed because its response body is deliberately hidden by the Workspace proxy.",
+      "next_step": "Inspect the CRM /api/token/workspace/ response or Growy server logs and verify the stable account binding before changing it.",
+      "workspace_trace_id": "ce899863-59bc-4ea9-b505-e74b189d0ffa"
+    },
+    {
+      "component": "SenimDesk ticket list and dashboard",
+      "status": "resolved_for_checked_account",
+      "confirmed": "Supported paginated and default ticket lists and dashboards return HTTP 200 after cbd5690. The prior SQL column mismatch was reproduced and fixed.",
+      "production_ticket_creation_tested": false
+    },
+    {
+      "component": "Workspace SenimDesk ticket counter",
+      "status": "resolved_for_checked_account",
+      "confirmed": "HTTP 200 with count=3, matching the SD dashboard open_count=3. The previous HTTP 503 was downstream of the SD ticket failure."
+    },
+    {
+      "component": "Growy LMS",
+      "status": "passed",
+      "confirmed": "Login exchange, four personal enrollments and course progress return HTTP 200; direct LMS enrollment identities match the Workspace proxy."
+    }
+  ],
+  "limitations": [
+    "Checks use the previously authorized director account only.",
+    "No business records or account bindings were changed. Production ticket creation, WhatsApp sending and another company/account were not exercised.",
+    "The Growy CRM source/backend logs were not available; no account relinking was performed.",
+    "Browser UI was not inspected."
+  ]
+}

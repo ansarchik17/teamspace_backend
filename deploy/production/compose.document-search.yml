@@ -1,0 +1,46 @@
+# Optional self-hosted embedding service, separate from the application deploy.
+# Set DOCUMENT_EMBEDDING_NETWORK to a network shared with API and worker.
+name: workspace-document-search
+services:
+  embeddings:
+    image: ${DOCUMENT_OLLAMA_IMAGE:-ollama/ollama:latest}
+    container_name: workspace-embeddings
+    restart: unless-stopped
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_NUM_PARALLEL: "1"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+    volumes:
+      - document_models:/root/.ollama
+    mem_limit: 4g
+    cpus: 2
+    # No host port: the unauthenticated model endpoint stays on the Docker network.
+    networks: [documents]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  reranker:
+    profiles: [reranker]
+    build: ./reranker
+    container_name: workspace-reranker
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    volumes:
+      - ${DOCUMENT_RERANK_MODEL_DIR:-./reranker-model}:/models/model:ro
+    mem_limit: 4g
+    cpus: 2
+    networks: [documents]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+volumes:
+  document_models:
+networks:
+  documents:
+    external: true
+    name: ${DOCUMENT_EMBEDDING_NETWORK:-workspace_workspace}

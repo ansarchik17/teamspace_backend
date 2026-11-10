@@ -1,0 +1,291 @@
+# Messenger API
+
+Go backend for messenger, drive, kanban, calendar and notebook features. This branch also includes a full Notes module with folders, pin/unpin, checklist notes, soft delete, sync and file/photo attachments.
+
+## Run
+
+Requirements:
+- Go 1.24+
+- PostgreSQL
+- Redis optional
+- MinIO for file attachments
+
+Setup:
+```bash
+cp .env.example .env
+make deps
+make run
+```
+
+Useful commands:
+```bash
+make test
+make fmt
+make swagger
+```
+
+`make swagger` automatically installs the pinned `swag` generator into `bin/`
+on its first run, then updates `docs/docs.go`, `docs/swagger.json` and
+`docs/swagger.yaml`. Go and network access are required for the first install;
+no global `swag` installation or PATH changes are needed.
+
+At startup the API runs all SQL migrations from [`db/migrations`](./db/migrations).
+
+## Email Notifications
+
+The backend supports SMTP email notifications with HTML + plain text fallback.
+
+Required env:
+```bash
+MAIL_ENABLED=true
+MAIL_PROVIDER=smtp
+SMTP_HOST=smtp.yourdomain.com
+SMTP_PORT=587
+SMTP_USERNAME=info@yourdomain.com
+SMTP_PASSWORD=change-me
+SMTP_FROM_EMAIL=info@yourdomain.com
+SMTP_FROM_NAME="Workspace"
+SMTP_USE_TLS=true
+SMTP_SKIP_TLS_VERIFY=false
+```
+
+Optional recipient override for Mailcow users:
+```bash
+MAIL_DOMAIN=yourdomain.com
+MAIL_NOTIFICATION_TYPES=new_message,incoming_call,system,security,calendar_invite,calendar_event,web_login
+```
+
+Recipient resolution rules:
+- all users receive email to the address stored in the database
+- invalid or empty recipient emails are skipped with warning logs and do not break notification delivery
+
+Test endpoints:
+- `POST /api/v1/admin/email/test` for authenticated super admins
+- `POST /api/internal/email/test` for internal callers with `X-Internal-Token`
+- `GET /api/internal/mail/oauth/profile` for mail-stack callers with `X-Internal-Token` + `Authorization: Bearer <keycloak_access_token>`
+
+## IDP OAuth
+
+IDP OAuth endpoints live under `/api/v1/idp`.
+
+Implemented:
+- `GET /api/v1/auth/idp/start`
+- `GET /api/v1/auth/idp/callback`
+- optional debug endpoints behind `IDP_ENABLE_DEBUG_API=true`:
+  - `GET /api/v1/idp/auth-url`
+  - `POST /api/v1/idp/token`
+  - `POST /api/v1/idp/token/refresh`
+  - `GET /api/v1/idp/user/basic`
+  - `GET /api/v1/idp/user/phone`
+  - `GET /api/v1/idp/user/email`
+
+Required env:
+```bash
+IDP_BASE_URL=https://idp.example.com
+IDP_CLIENT_ID=...
+IDP_CLIENT_SECRET=...
+IDP_REDIRECT_URI=https://workspace.yourdomain.com/api/v1/auth/idp/callback
+IDP_SCOPES=user:basic:read user:phone:read user:email:read
+IDP_STATE_TTL=10m
+IDP_ENV=prod
+```
+
+Optional env:
+```bash
+IDP_DEFAULT_LANG=ru
+IDP_REQUEST_TIMEOUT=15s
+IDP_ENABLE_DEBUG_API=false
+FRONTEND_SUCCESS_URL=https://workspace.yourdomain.com/web/auth/callback
+FRONTEND_ERROR_URL=https://workspace.yourdomain.com/web/auth/callback
+```
+
+Notes:
+- production login flow is backend-managed: frontend does not receive raw IDP tokens
+- `redirect_uri` is always taken from backend config
+- IDP access/refresh tokens are used only inside callback to fetch profile data and are not persisted
+
+## Notes API
+
+Notes routes live under `/api/v1/notes`.
+
+Implemented:
+- note CRUD
+- create note with optional files/photos in the main `POST /api/v1/notes` multipart request
+- notes folders under `/api/v1/notes/folders`
+- pin/unpin ordering: pinned first, then `updated_at DESC`
+- checklist mode with embedded items
+- search by `title` + `content` with PostgreSQL FTS and `ILIKE` fallback
+- trash via soft delete and restore
+- sync endpoints:
+  - `GET /api/v1/notes/sync`
+  - `POST /api/v1/notes/sync/batch`
+- file and photo attachments:
+  - `POST /api/v1/notes/{id}/attachments`
+  - `GET /api/v1/notes/{id}/attachments`
+  - `DELETE /api/v1/notes/{id}/attachments/{fileId}`
+
+## Sync Logic
+
+The server keeps `updated_at` and `version` on every note.
+
+Rules:
+- every successful mutation increments `version`
+- client updates must send the current note `version`
+- if the server version is newer, the API returns `409` with code `NOTE_VERSION_CONFLICT`
+- `GET /api/v1/notes/sync?since=<ISO_DATE>` returns all changed notes after the given timestamp, including deleted ones
+- `POST /api/v1/notes/sync/batch` accepts offline-created or offline-updated notes plus delete/restore/hard-delete actions
+
+Recommended client flow:
+1. Pull changes with `GET /notes/sync`.
+2. Apply local offline changes with `POST /notes/sync/batch`.
+3. On `409`, replace the local note with the server copy and reapply user edits if needed.
+
+## Notes Storage
+
+Database objects added for notes:
+- `note_folders`
+- `notes`
+- `note_attachments`
+- `note_audit_events`
+
+Attachments reuse the existing `files` table and MinIO storage, so uploaded note files can be handled with the same storage backend already used by the project.
+
+## Personal Team AI
+
+The existing `/api/v1/ai/chats/:id/messages` chat runs a model-driven read
+loop in `internal/service/ai_context_chat.go`. The model chooses datasets, filters,
+pages and details and combines the returned facts. There are no keyword-to-answer
+rules, arbitrary SQL, arbitrary HTTP URLs or privileged data-reading accounts.
+The first completion uses `tool_choice=auto`: general conversation, explanations,
+writing, translation, math and coding can return an explicit `answer_mode=general`
+envelope immediately. Capabilities come from the assistant instructions and source
+catalogue, not the user's profile. General answers preserve Markdown, code and JSON
+and have no verification cards or sources. The initial profile read still verifies
+current authorization; it is not presented as evidence for a general answer.
+Personal facts and attachment contents require source reads before answering.
+If the gateway omits `tool_calls` without a valid general-answer envelope, or
+explicitly rejects tool parameters, its unclassified answer is discarded and the
+same model is asked for strict JSON. Both protocols use the same authorized
+readers, pagination, sanitization and budgets. The JSON protocol accepts only
+complete `read`/`answer` objects; a first-step answer must explicitly use
+`answer_mode=general` and have no cards. Unread grounded answers and malformed
+plans fail explicitly. The model chooses the mode from the request and history;
+this is not an independent factual correctness guarantee. Authentication, rate-limit and server
+errors do not trigger this compatibility path. No question-to-answer rules are
+introduced, and JSON control envelopes are never saved as assistant replies.
+
+Contextual chat retains up to 40 recent messages within a 64 KB history budget,
+dropping whole old turns rather than cutting the latest request. General replies
+allow up to 6000 completion tokens so explanations and code have room to finish.
+
+Sources are declared in `internal/service/ai_context/catalog.json`. Workspace
+reads go through the same authenticated router, tenant checks and object ACLs as
+the UI. The actor comes only from server middleware. The model cannot set user,
+organization, tenant, tokens or cookies. `tasks.mine=true` resolves the assignee
+server-side; training reads default to the current employee even for managers.
+Growy reuses the user's existing Workspace SSO session: CRM/WhatsApp reads
+target `/api/platform/v1/`, enrollment/progress reads target `/api/my/`, and
+unfinished courses target `/api/training-programs/my-unfinished/`. The LMS
+proxy routes are GET-only and retain Growy's own permission checks.
+
+Available domains include profile/organization, tasks/boards/goals/history,
+calendar, Drive, notes, conversations/groups/channels, notifications/recordings,
+AI chat history, Growy CRM/WhatsApp/training, ODO documents/workflows/assignments,
+SenimDesk tickets/works/objects/projects/clients/knowledge, and corporate mail.
+Drive, both upload paths of the current AI chat, and mail/ODO file attachments
+can supply parsed text. PDF/DOCX/TXT/XLSX/PPTX use the existing parser; unsupported
+formats are reported rather than guessed. Large text can be read through
+`text_page` (HTTP sources) or `page` (chat/Drive text readers). The model must
+respect pagination and state what remains unexamined.
+
+Connector setup on the Workspace server:
+
+- `ALEM_API_KEY` and `ALEM_DEFAULT_MODEL`: the provider and chosen model must
+  support native function calling or follow the strict JSON read-plan protocol.
+  The configured default is used for contextual chats, including old chats.
+  Compatibility negotiation adds one model request when native tools are absent.
+- `AI_CONTEXT_ODO_URL`: the reachable ODO BFF base URL. Production Compose defaults
+  to `http://odo-bff:8080`. ODO validates the current
+  Workspace access JWT and maps the actual user/company. Do not use a service JWT.
+- `SD_ACCESS_API_URL` and `SD_ACCESS_INTERNAL_TOKEN`: reuse the existing SSO
+  configuration. Deploy the SD `/api/internal/workspace/ai-read-token` endpoint
+  with its matching `WORKSPACE_ACCESS_INTERNAL_TOKEN` and existing tenant/position
+  policy settings. It resolves an already linked account, issues a two-minute
+  GET-only token with the actual role/company and returns the verified tenant host.
+  It does not provision a user, company, membership or refresh token.
+- `AI_CONTEXT_MAIL_URL`: the reachable corporate-mail API base URL. Production
+  defaults to `http://axis-mail-app-app-1:4100`; other deployments can use an
+  explicit origin such as `https://inbox.teamspace.kz`. Deploy its
+  `/api/internal/workspace/ai/*` routes.
+  Mail revalidates the Workspace session and resolves the immutable user/company
+  binding, active mailbox and accepted consent. Both local mail and Stalwart use
+  the same user mailbox checks as ordinary mail reads. No mailbox is provisioned.
+- Growy uses the existing Workspace proxy and verified SSO identity. Only the
+  specific training GET routes were added; mutation routes were not opened.
+  CRM/platform APIs use `GROWY_PUBLIC_URL` and optional `GROWY_API_INTERNAL_URL`.
+  Training reads use the separate `GROWY_LMS_PUBLIC_URL` (default:
+  `APP_PUBLIC_URL/growy`) and optional `GROWY_LMS_INTERNAL_URL`. The LMS connection
+  provisions and exchanges credentials with that same LMS backend; CRM credentials
+  are never reused for LMS. Both private origins default to empty in Compose.
+  To use the colocated LMS over Docker, explicitly set
+  `GROWY_LMS_INTERNAL_URL=http://growy-api-1:8000`. Private requests preserve the
+  public Host/protocol. LMS requests carry a tenant Origin built from the current
+  server-validated organization slug and `TENANT_BASE_DOMAIN` (default:
+  `teamspace.kz`), not incoming browser headers. Browser/SSO URLs remain public.
+- Iform reads profile, directory, accessible processes/requests/forms, assigned
+  tasks, request timeline/document metadata and own notifications through the
+  existing Workspace Iform bridge. The bridge resolves access and signs each
+  GET for the current user/company. Production uses `iform-backend:8081`.
+  Tool pages start at 1 and translate to Iform's zero-based API pages; a full
+  list page carries `has_next` so the model can continue reading.
+
+For the shared-server deployment, `connect-ai-services.sh` attaches installed,
+running application backends to `workspace_workspace` during backend release.
+The ODO BFF, Growy API and mail app Compose files preserve this network on
+recreation. Databases retain their original networks. Service names/origins are
+operator configuration; they are never model inputs. ODO assignment lists resolve
+the ODO user ID via authenticated `/api/v1/auth/me` and enforce that executor
+server-side, including for administrators. Network connectivity does not grant
+user permission; SSO keys, active membership and service ACLs are still required.
+
+Empty/unreachable connectors are explicit unavailable sources, never empty
+results. Native model execution has a 90-second deadline, at most 16 reads and
+nine model turns, bounded responses and a total tool-result context budget.
+External reads have timeouts and cannot follow redirects. Results strip known
+credential/encryption fields and storage/signed URLs before entering the model.
+Files and messages are untrusted evidence, not instructions. The model prompt
+distinguishes facts, deductions, failures and partial reads. Server-generated
+source IDs/statuses are returned separately in `data_sources`; only the public
+answer and selected verified cards are preserved in ordinary chat history.
+
+End-to-end encrypted messages remain opaque: metadata is available, plaintext is
+not. Images/audio/video require a separate supported extraction/vision source.
+Prompt rules and permission controls do not guarantee model correctness; evaluate
+real multi-source questions with the configured provider before production rollout.
+No live provider/production-tenant validation is implied by unit tests.
+
+Focused checks:
+
+```bash
+go test ./internal/service -run 'TestAIReader|TestPersonalAI' -count=1
+go test ./internal/handler ./internal/repository ./internal/alem ./cmd/api
+```
+
+Opt-in quality evaluation against the configured real provider (uses API tokens):
+
+```bash
+# Supply ALEM_API_KEY through the environment; optional ALEM_DEFAULT_MODEL.
+TEAM_AI_LIVE_EVAL=1 go test ./internal/service -run '^TestPersonalAILiveQuality$' -v -count=1
+```
+
+The live suite uses synthetic user data and covers capabilities, greetings,
+explanations, arithmetic, code/JSON, Russian/English/Kazakh, writing, follow-ups,
+personal tasks, unavailable mail and mixed requests. It checks routing and some
+concrete results and prints answers for human quality review. It does not validate
+production connectors or guarantee correctness on arbitrary questions.
+
+The SD tests cover stable identity, company isolation, revoked access and GET-only
+credentials. Mail's `tests/ai-context.test.ts` tests mailbox isolation, consent,
+revocation, long text, attachments and rejected impersonation without a live DB.
+The deployment copy lives in `workspace-front/deploy/mail/source`; keep it in sync
+with the canonical mail implementation when releasing these changes.

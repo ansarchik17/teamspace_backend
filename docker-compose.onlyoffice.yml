@@ -1,0 +1,36 @@
+# Optional overlay: docker compose -f docker-compose.yml -f docker-compose.onlyoffice.yml up -d workspace-onlyoffice
+services:
+  api:
+    environment:
+      ONLYOFFICE_PUBLIC_URL: ${ONLYOFFICE_PUBLIC_URL:-http://localhost:18082}
+      ONLYOFFICE_DOWNLOAD_BASE_URL: http://workspace-api:8080
+      ONLYOFFICE_INTERNAL_URL: http://workspace-onlyoffice
+      ONLYOFFICE_JWT_SECRET: ${ONLYOFFICE_JWT_SECRET:?Set a shared DocumentServer JWT secret}
+
+  workspace-onlyoffice:
+    image: ${ONLYOFFICE_IMAGE:?Set a tested pinned onlyoffice/documentserver tag or digest}
+    restart: unless-stopped
+    stop_grace_period: 120s
+    volumes:
+      - onlyoffice-data:/var/www/onlyoffice/Data
+      - onlyoffice-cache:/var/lib/onlyoffice
+      - onlyoffice-postgres:/var/lib/postgresql
+      - onlyoffice-redis:/var/lib/redis
+      - onlyoffice-rabbitmq:/var/lib/rabbitmq
+    environment:
+      JWT_ENABLED: "true"
+      JWT_SECRET: ${ONLYOFFICE_JWT_SECRET:?Set a shared DocumentServer JWT secret}
+      JWT_HEADER: Authorization
+      # Internal API is on the private Docker network. Use only on a trusted network.
+      ALLOW_PRIVATE_IP_ADDRESS: "true"
+    ports:
+      - "127.0.0.1:18082:80"
+    networks:
+      - workspace-network
+
+volumes:
+  onlyoffice-data:
+  onlyoffice-cache:
+  onlyoffice-postgres:
+  onlyoffice-redis:
+  onlyoffice-rabbitmq:

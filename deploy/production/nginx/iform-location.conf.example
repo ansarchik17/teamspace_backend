@@ -1,0 +1,13 @@
+# Place inside BOTH the main Workspace and company wildcard HTTPS server blocks.
+# Publish only the frontend. Do not expose iForm :8081 or /api/v1 directly.
+location = /iform-app { return 302 /iform-app/; }
+location ^~ /iform-app/ {
+    proxy_pass http://127.0.0.1:15188;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    # Static container does not need Workspace credentials.
+    proxy_set_header Authorization "";
+    proxy_set_header Cookie "";
+}
+# /api/v1/iform/api/* uses the existing Workspace /api/ upstream and
+# authentication/tenant-host middleware. No new public iForm API location is needed.

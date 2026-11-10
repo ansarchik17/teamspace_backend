@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Дерево иерархии</title>
+  <style>
+    :root {
+      --bg: #f4f1ea;
+      --panel: #fffdf8;
+      --panel-2: #f7f3eb;
+      --text: #1f1a14;
+      --muted: #6d6255;
+      --line: #d8ccba;
+      --accent: #0f766e;
+      --accent-2: #c2410c;
+      --shadow: 0 18px 40px rgba(54, 42, 28, 0.08);
+      --radius: 18px;
+      --mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+      --sans: "Segoe UI", "Noto Sans", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      background:
+        radial-gradient(circle at top left, rgba(15, 118, 110, 0.08), transparent 28%),
+        radial-gradient(circle at top right, rgba(194, 65, 12, 0.08), transparent 24%),
+        linear-gradient(180deg, #f7f3ec 0%, #f1ece3 100%);
+      color: var(--text);
+    }
+
+    .page {
+      width: min(1480px, calc(100vw - 40px));
+      margin: 24px auto 48px;
+    }
+
+    .hero,
+    .toolbar,
+    .layout-card {
+      background: rgba(255, 253, 248, 0.9);
+      backdrop-filter: blur(14px);
+      border: 1px solid rgba(216, 204, 186, 0.9);
+      box-shadow: var(--shadow);
+      border-radius: var(--radius);
+    }
+
+    .hero {
+      padding: 24px 28px;
+      margin-bottom: 18px;
+    }
+
+    .eyebrow {
+      font: 700 12px/1.1 var(--mono);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.02;
+      letter-spacing: -0.04em;
+    }
+
+    .subtitle {
+      margin: 10px 0 0;
+      max-width: 900px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 14px;
+      z-index: 20;
+      padding: 16px 18px;
+      margin-bottom: 18px;
+    }
+
+    .toolbar-grid {
+      display: grid;
+      grid-template-columns: minmax(260px, 1.4fr) minmax(220px, 1fr) auto auto auto;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .field,
+    .button,
+    .select {
+      height: 44px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .field,
+    .select {
+      width: 100%;
+      padding: 0 14px;
+      outline: none;
+    }
+
+    .field:focus,
+    .select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+    }
+
+    .button {
+      padding: 0 14px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: 160ms ease;
+    }
+
+    .button:hover {
+      transform: translateY(-1px);
+    }
+
+    .button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .button.secondary {
+      background: var(--panel-2);
+    }
+
+    .checkbox {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .checkbox input {
+      accent-color: var(--accent);
+    }
+
+    .layout-card {
+      display: grid;
+      grid-template-columns: 300px minmax(0, 1fr);
+      min-height: 72vh;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      border-right: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(247, 243, 235, 0.92), rgba(255, 253, 248, 0.92));
+      padding: 18px;
+    }
+
+    .sidebar h2,
+    .tree-pane h2 {
+      margin: 0 0 14px;
+      font-size: 16px;
+      letter-spacing: -0.02em;
+    }
+
+    .stats {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .stat {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel);
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+    }
+
+    .legend {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      flex: none;
+    }
+
+    .dot.ministry { background: #0f766e; }
+    .dot.state_body { background: #2563eb; }
+    .dot.department { background: #c2410c; }
+    .dot.division { background: #7c3aed; }
+
+    .details {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--panel);
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .tree-pane {
+      padding: 18px;
+      overflow: auto;
+    }
+
+    .tree-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      color: var(--muted);
+      font-size: 12px;
+      font-family: var(--mono);
+    }
+
+    .tree-root,
+    .tree-root ul {
+      list-style: none;
+      padding-left: 0;
+      margin: 0;
+    }
+
+    .tree-root ul {
+      margin-left: 18px;
+      padding-left: 18px;
+      border-left: 1px solid rgba(216, 204, 186, 0.95);
+    }
+
+    .tree-item {
+      margin: 8px 0;
+    }
+
+    .node {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 10px;
+      align-items: start;
+      padding: 10px 12px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+    }
+
+    .node.matched {
+      border-color: rgba(15, 118, 110, 0.5);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.08);
+    }
+
+    .toggle {
+      width: 24px;
+      height: 24px;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0;
+      margin-top: 2px;
+    }
+
+    .toggle.hidden {
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .node-main {
+      min-width: 0;
+    }
+
+    .node-topline {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+
+    .node-title {
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .type-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-family: var(--mono);
+      color: #fff;
+    }
+
+    .type-badge.ministry { background: #0f766e; }
+    .type-badge.state_body { background: #2563eb; }
+    .type-badge.department { background: #c2410c; }
+    .type-badge.division { background: #7c3aed; }
+    .type-badge.other { background: #475569; }
+
+    .node-subline {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .node-metrics {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      min-width: 92px;
+    }
+
+    .metric {
+      padding: 5px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: var(--panel-2);
+      font: 600 11px/1 var(--mono);
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .users {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .user-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: #f2efe8;
+      color: #4e463d;
+      font-size: 12px;
+      border: 1px solid #e0d4c2;
+    }
+
+    .user-avatar {
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      background: #d1c1ab;
+      display: inline-grid;
+      place-items: center;
+      font: 700 10px/1 var(--mono);
+      color: #40372d;
+      overflow: hidden;
+    }
+
+    .node-children.collapsed {
+      display: none;
+    }
+
+    .empty,
+    .error,
+    .loading {
+      padding: 18px;
+      border-radius: 14px;
+      border: 1px dashed var(--line);
+      color: var(--muted);
+      background: rgba(255, 253, 248, 0.7);
+    }
+
+    .error {
+      border-style: solid;
+      border-color: rgba(194, 65, 12, 0.3);
+      color: #8b3c18;
+    }
+
+    @media (max-width: 1080px) {
+      .toolbar-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .layout-card {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+    }
+
+    @media (max-width: 720px) {
+      .page {
+        width: min(100vw - 20px, 1480px);
+        margin-top: 10px;
+      }
+
+      .hero,
+      .toolbar,
+      .tree-pane,
+      .sidebar {
+        padding-left: 14px;
+        padding-right: 14px;
+      }
+
+      .toolbar-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .node {
+        grid-template-columns: auto 1fr;
+      }
+
+      .node-metrics {
+        grid-column: 2;
+        align-items: flex-start;
+        flex-direction: row;
+        flex-wrap: wrap;
+        min-width: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <section class="hero">
+      <div class="eyebrow">Hierarchy Viewer</div>
+      <h1>Дерево оргструктуры</h1>
+      <p class="subtitle">
+        Публичный экран для просмотра полной иерархии: министерства, госорганы, департаменты,
+        управления и пользователи. Страница по умолчанию загружает <span id="api-label"></span>.
+      </p>
+    </section>
+
+    <section class="toolbar">
+      <div class="toolbar-grid">
+        <input id="search" class="field" type="search" placeholder="Поиск по названию, пользователю, роли, типу">
+        <select id="type-filter" class="select">
+          <option value="all">Все типы</option>
+          <option value="ministry">Только министерства</option>
+          <option value="state_body">Только госорганы</option>
+          <option value="department">Только департаменты</option>
+          <option value="division">Только управления</option>
+        </select>
+        <label class="checkbox">
+          <input id="only-miid" type="checkbox" checked>
+          Только министерство ID 15
+        </label>
+        <button id="expand-all" class="button secondary" type="button">Раскрыть всё</button>
+        <button id="collapse-all" class="button primary" type="button">Свернуть уровни</button>
+      </div>
+    </section>
+
+    <section class="layout-card">
+      <aside class="sidebar">
+        <h2>Сводка</h2>
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-label">Показано узлов</div>
+            <div id="stat-nodes" class="stat-value">0</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Пользователей в дереве</div>
+            <div id="stat-users" class="stat-value">0</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Корневых веток</div>
+            <div id="stat-roots" class="stat-value">0</div>
+          </div>
+        </div>
+
+        <div class="legend">
+          <div class="legend-item"><span class="dot ministry"></span>Министерство</div>
+          <div class="legend-item"><span class="dot state_body"></span>Госорган / аппарат</div>
+          <div class="legend-item"><span class="dot department"></span>Департамент</div>
+          <div class="legend-item"><span class="dot division"></span>Управление / отдел</div>
+        </div>
+
+        <div class="details">
+          Используйте поиск для быстрой навигации. Для division-узлов пользователи и руководители
+          видны прямо в дереве. Если дерево отфильтровано, остаются только совпадающие ветки и их родители.
+        </div>
+      </aside>
+
+      <main class="tree-pane">
+        <h2>Иерархия</h2>
+        <div class="tree-meta">
+          <div id="meta-endpoint" class="chip"></div>
+          <div class="chip">Источник: <span id="meta-source-mode">public tree</span></div>
+        </div>
+        <div id="tree-container" class="loading">Загрузка дерева...</div>
+      </main>
+    </section>
+  </div>
+
+  <script>
+    const DEFAULT_API_BASE = "https://alem-workspace.gov.kz/api/v1";
+    const DEFAULT_API = `${DEFAULT_API_BASE}/hierarchy/public/tree`;
+    const params = new URLSearchParams(window.location.search);
+    const apiUrl = params.get("api") || DEFAULT_API;
+    const focusMinistryId = 15;
+
+    const state = {
+      rawTree: [],
+      filteredTree: [],
+      expanded: new Set(),
+      stats: { nodes: 0, users: 0, roots: 0 }
+    };
+
+    const els = {
+      container: document.getElementById("tree-container"),
+      search: document.getElementById("search"),
+      typeFilter: document.getElementById("type-filter"),
+      onlyMiid: document.getElementById("only-miid"),
+      expandAll: document.getElementById("expand-all"),
+      collapseAll: document.getElementById("collapse-all"),
+      statNodes: document.getElementById("stat-nodes"),
+      statUsers: document.getElementById("stat-users"),
+      statRoots: document.getElementById("stat-roots"),
+      metaEndpoint: document.getElementById("meta-endpoint"),
+      apiLabel: document.getElementById("api-label")
+    };
+
+    function normalizeText(value) {
+      return (value || "").toString().toLowerCase().replace(/\s+/g, " ").trim();
+    }
+
+    function nodeKey(node) {
+      return `${node.type || "node"}:${node.id}`;
+    }
+
+    function initials(name) {
+      const parts = (name || "").trim().split(/\s+/).filter(Boolean);
+      return parts.slice(0, 2).map(part => part[0]?.toUpperCase() || "").join("") || "?";
+    }
+
+    function countTree(nodes) {
+      let nodeCount = 0;
+      let userCount = 0;
+
+      function walk(list) {
+        for (const node of list || []) {
+          nodeCount += 1;
+          userCount += (node.users || []).length;
+          walk(node.children || []);
+        }
+      }
+
+      walk(nodes);
+      return { nodeCount, userCount };
+    }
+
+    function collectExpandable(nodes, target) {
+      for (const node of nodes || []) {
+        if ((node.children || []).length) {
+          target.add(nodeKey(node));
+          collectExpandable(node.children, target);
+        }
+      }
+    }
+
+    function cloneNode(node, children) {
+      return {
+        ...node,
+        children
+      };
+    }
+
+    function filterTree(nodes, query, typeFilter, onlyMiid) {
+      const q = normalizeText(query);
+
+      function matchesNode(node) {
+        if (typeFilter !== "all" && node.type !== typeFilter) {
+          return false;
+        }
+        if (!q) {
+          return true;
+        }
+
+        const haystack = [
+          node.name,
+          node.type,
+          node.leader?.first_name,
+          node.leader?.last_name,
+          ...(node.users || []).flatMap(user => [user.first_name, user.last_name, user.position, user.full_name_local])
+        ]
+          .map(normalizeText)
+          .join(" ");
+
+        return haystack.includes(q);
+      }
+
+      function walk(list, ministryContextId) {
+        const out = [];
+
+        for (const node of list || []) {
+          const currentMinistryId = node.type === "ministry" ? node.id : ministryContextId;
+          if (onlyMiid && currentMinistryId !== null && currentMinistryId !== undefined && currentMinistryId !== focusMinistryId) {
+            if (node.type === "ministry") {
+              continue;
+            }
+          }
+
+          const children = walk(node.children || [], currentMinistryId);
+          const directMatch = matchesNode(node);
+
+          if (directMatch || children.length) {
+            out.push(cloneNode(node, children));
+          }
+        }
+
+        return out;
+      }
+
+      return walk(nodes, null);
+    }
+
+    function renderUser(user) {
+      const fullName = [user.last_name, user.first_name].filter(Boolean).join(" ").trim() || user.username || `user-${user.id}`;
+      const avatar = user.avatar_url
+        ? `<span class="user-avatar"><img src="${user.avatar_url}" alt="" style="width:100%;height:100%;object-fit:cover"></span>`
+        : `<span class="user-avatar">${initials(fullName)}</span>`;
+      const role = user.position ? `, ${escapeHtml(user.position)}` : "";
+      return `<span class="user-pill">${avatar}<span>${escapeHtml(fullName)}${role}</span></span>`;
+    }
+
+    function escapeHtml(value) {
+      return (value || "")
+        .toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function formatType(type) {
+      switch (type) {
+        case "ministry": return "Министерство";
+        case "state_body": return "Госорган";
+        case "department": return "Департамент";
+        case "division": return "Управление";
+        case "prime_minister": return "Премьер-министр";
+        case "deputy_prime_minister": return "Вице-премьер";
+        default: return type || "Узел";
+      }
+    }
+
+    function renderNode(node) {
+      const key = nodeKey(node);
+      const children = node.children || [];
+      const hasChildren = children.length > 0;
+      const isExpanded = state.expanded.has(key);
+      const users = node.users || [];
+      const leaderName = node.leader
+        ? [node.leader.last_name, node.leader.first_name].filter(Boolean).join(" ")
+        : "";
+      const metaParts = [
+        `ID: ${node.id}`,
+        leaderName ? `Руководитель: ${leaderName}` : "",
+        node.head_of_staff ? `Руководитель аппарата: ${[node.head_of_staff.last_name, node.head_of_staff.first_name].filter(Boolean).join(" ")}` : ""
+      ].filter(Boolean);
+
+      const userMarkup = users.length
+        ? `<div class="users">${users.map(renderUser).join("")}</div>`
+        : "";
+
+      return `
+        <li class="tree-item">
+          <div class="node" data-key="${escapeHtml(key)}">
+            <button class="toggle ${hasChildren ? "" : "hidden"}" data-toggle="${escapeHtml(key)}" type="button">
+              ${isExpanded ? "−" : "+"}
+            </button>
+            <div class="node-main">
+              <div class="node-topline">
+                <div class="node-title">${escapeHtml(node.name)}</div>
+                <span class="type-badge ${escapeHtml(node.type || "other")}">${escapeHtml(formatType(node.type))}</span>
+              </div>
+              <div class="node-subline">${metaParts.map(escapeHtml).join(" • ")}</div>
+              ${userMarkup}
+            </div>
+            <div class="node-metrics">
+              <span class="metric">children ${children.length}</span>
+              <span class="metric">users ${users.length}</span>
+            </div>
+          </div>
+          ${hasChildren ? `<ul class="node-children ${isExpanded ? "" : "collapsed"}">${children.map(renderNode).join("")}</ul>` : ""}
+        </li>
+      `;
+    }
+
+    function renderTree() {
+      const { nodeCount, userCount } = countTree(state.filteredTree);
+      state.stats = { nodes: nodeCount, users: userCount, roots: state.filteredTree.length };
+      els.statNodes.textContent = String(nodeCount);
+      els.statUsers.textContent = String(userCount);
+      els.statRoots.textContent = String(state.filteredTree.length);
+
+      if (!state.filteredTree.length) {
+        els.container.className = "empty";
+        els.container.innerHTML = "По текущим фильтрам ничего не найдено.";
+        return;
+      }
+
+      els.container.className = "";
+      els.container.innerHTML = `<ul class="tree-root">${state.filteredTree.map(renderNode).join("")}</ul>`;
+
+      els.container.querySelectorAll("[data-toggle]").forEach(button => {
+        button.addEventListener("click", () => {
+          const key = button.getAttribute("data-toggle");
+          if (!key) {
+            return;
+          }
+          if (state.expanded.has(key)) {
+            state.expanded.delete(key);
+          } else {
+            state.expanded.add(key);
+          }
+          renderTree();
+        });
+      });
+    }
+
+    function applyFilters() {
+      state.filteredTree = filterTree(
+        state.rawTree,
+        els.search.value,
+        els.typeFilter.value,
+        els.onlyMiid.checked
+      );
+      renderTree();
+    }
+
+    async function loadTree() {
+      els.metaEndpoint.textContent = `GET ${apiUrl}`;
+      els.apiLabel.textContent = apiUrl;
+
+      try {
+        const response = await fetch(apiUrl, {
+          headers: { Accept: "application/json" }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const payload = await response.json();
+        state.rawTree = Array.isArray(payload?.tree) ? payload.tree : [];
+        state.expanded.clear();
+        collectExpandable(state.rawTree, state.expanded);
+        applyFilters();
+      } catch (error) {
+        els.container.className = "error";
+        els.container.innerHTML = `Не удалось загрузить дерево. Проверьте endpoint <strong>${escapeHtml(apiUrl)}</strong> и CORS/доступность API.<br><br>Ошибка: ${escapeHtml(error.message || String(error))}`;
+      }
+    }
+
+    els.search.addEventListener("input", applyFilters);
+    els.typeFilter.addEventListener("change", applyFilters);
+    els.onlyMiid.addEventListener("change", applyFilters);
+
+    els.expandAll.addEventListener("click", () => {
+      state.expanded.clear();
+      collectExpandable(state.filteredTree, state.expanded);
+      renderTree();
+    });
+
+    els.collapseAll.addEventListener("click", () => {
+      state.expanded.clear();
+      for (const node of state.filteredTree) {
+        state.expanded.add(nodeKey(node));
+      }
+      renderTree();
+    });
+
+    loadTree();
+  </script>
+</body>
+</html>

@@ -1,0 +1,226 @@
+Reproductions run only in temporary snapshots of the pinned main commits.
+No production data or working application sources were changed.
+The Go snippets reuse existing test stubs in the matching package.
+
+===== Workspace: mock storage / HTTP handlers / workspace-backend/internal/handler/audit_file_witness_test.go =====
+package handler
+
+import (
+    "encoding/json"
+    "fmt"
+    "net/http"
+    "net/http/httptest"
+    "net/url"
+    "strings"
+    "testing"
+    "time"
+    "github.com/gin-gonic/gin"
+    "github.com/west6ide/workspace-backend/internal/config"
+    "github.com/west6ide/workspace-backend/internal/service"
+    "go.uber.org/zap"
+)
+
+func TestAuditWitnessFileHandlersAcceptForeignObject(t *testing.T) {
+    const object = "drive/user-999/private.txt"
+    const payload = "synthetic foreign document"
+    deleted := ""
+    storage := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        if r.Method == http.MethodDelete { deleted = r.URL.Path; w.WriteHeader(204); return }
+        if strings.HasSuffix(r.URL.Path, object) {
+            w.Header().Set("Content-Type", "text/plain")
+            w.Header().Set("Content-Length", fmt.Sprint(len(payload)))
+            w.Header().Set("Last-Modified", time.Now().UTC().Format(http.TimeFormat))
+            w.Header().Set("ETag", `"synthetic-etag"`)
+            if r.Method == http.MethodGet { _, _ = w.Write([]byte(payload)) }
+            return
+        }
+        w.WriteHeader(200)
+    }))
+    defer storage.Close()
+    fs, err := service.NewFileService(config.MinIOConfig{Endpoint: strings.TrimPrefix(storage.URL, "http://"), AccessKey: "synthetic-access", SecretKey: "synthetic-secret", Bucket: "audit", Region: "us-east-1", PublicBaseURL: storage.URL+"/audit"}, "http://workspace.test", nil, zap.NewNop())
+    if err != nil { t.Fatal(err) }
+    h := NewFileHandler(fs, zap.NewNop())
+    router := gin.New()
+    router.DELETE("/api/v1/files/public", h.DeletePublicFile)
+    router.GET("/api/v1/files/download", h.DownloadFile)
+    router.GET("/api/v1/files/url", func(c *gin.Context) { c.Set("user_id", int64(10)); h.GetFileURL(c) })
+    router.DELETE("/api/v1/files", func(c *gin.Context) { c.Set("user_id", int64(10)); h.DeleteFile(c) })
+    query := "?"+url.Values{"object_name": {object}}.Encode()
+    response := httptest.NewRecorder()
+    router.ServeHTTP(response, httptest.NewRequest("GET", "/api/v1/files/url"+query, nil))
+    if response.Code != 200 { t.Fatalf("url status=%d body=%s", response.Code, response.Body.String()) }
+    var result map[string]any
+    if err := json.Unmarshal(response.Body.Bytes(), &result); err != nil { t.Fatal(err) }
+    if data, ok := result["data"].(map[string]any); ok { result = data }
+    signed, ok := result["url"].(string)
+    if !ok { t.Fatalf("URL missing: %s", response.Body.String()) }
+    link, err := url.Parse(signed)
+    if err != nil { t.Fatal(err) }
+    response = httptest.NewRecorder()
+    router.ServeHTTP(response, httptest.NewRequest("GET", link.RequestURI(), nil))
+    if response.Code != 200 || response.Body.String() != payload { t.Fatalf("download status=%d body=%s", response.Code, response.Body.String()) }
+    t.Log("CONFIRMED: user 10 obtained a signature for a foreign object; anonymous signed download returned the synthetic content")
+    for _, path := range []string{"/api/v1/files/public", "/api/v1/files"} {
+        deleted = ""
+        response = httptest.NewRecorder()
+        router.ServeHTTP(response, httptest.NewRequest("DELETE", path+query, nil))
+        if response.Code != 200 || deleted != "/audit/"+object { t.Fatalf("delete %s status=%d storage_path=%s", path, response.Code, deleted) }
+        t.Logf("CONFIRMED: %s deleted the foreign synthetic storage object", path)
+    }
+}
+
+===== SD: synthetic repositories / workspace-sd-backend/internal/usecase/audit_witness_test.go =====
+package usecase
+
+import (
+    "context"
+    "errors"
+    "testing"
+    "time"
+    "github.com/google/uuid"
+    "github.com/user/sd-backend/internal/domain"
+)
+
+type auditStockRepo struct {
+    inventoryCloseTicketInventoryRepo
+    stock domain.Consumable
+    writes int
+}
+func (r *auditStockRepo) GetConsumableByID(_ context.Context, _ uuid.UUID) (*domain.Consumable, error) {
+    copy := r.stock
+    return &copy, nil
+}
+func (r *auditStockRepo) UpdateConsumable(_ context.Context, value *domain.Consumable) error {
+    r.stock = *value
+    r.writes++
+    return nil
+}
+func auditStockFixture() (*inventoryUseCase, *auditStockRepo, domain.CloseTicketReport) {
+    company, status := uuid.New(), uuid.New()
+    ticket := &domain.Ticket{ID: uuid.New(), CompanyID: &company, CreatedAt: time.Now().Add(-time.Hour)}
+    stock := &auditStockRepo{stock: domain.Consumable{ID: uuid.New(), CompanyID: &company, Name: "Synthetic stock", Quantity: 10}}
+    tickets := &inventoryCloseTicketRepo{ticket: ticket, statuses: []domain.TicketStatus{{ID: status, Type: domain.StatusTypeCompleted}}}
+    uc := &inventoryUseCase{ticketRepo: tickets, inventoryRepo: stock}
+    report := domain.CloseTicketReport{TicketID: ticket.ID, StatusID: &status, Consumables: []domain.TicketConsumption{{ConsumableID: stock.stock.ID, Quantity: 2}}}
+    return uc, stock, report
+}
+func TestAuditWitnessNegativeConsumptionIncreasesStock(t *testing.T) {
+    uc, stock, report := auditStockFixture()
+    report.Consumables[0].Quantity = -3
+    if err := uc.CloseTicketWithReport(context.Background(), report); err != nil { t.Fatal(err) }
+    if stock.stock.Quantity != 13 { t.Fatalf("unexpected stock: %v", stock.stock.Quantity) }
+    t.Log("CONFIRMED: quantity=-3 accepted; stock increased from 10 to 13")
+}
+func TestAuditWitnessInvalidStatusLeavesStockDeducted(t *testing.T) {
+    uc, stock, report := auditStockFixture()
+    badStatus := uuid.New()
+    report.StatusID = &badStatus
+    err := uc.CloseTicketWithReport(context.Background(), report)
+    if err == nil || stock.stock.Quantity != 8 || stock.writes != 1 { t.Fatalf("err=%v stock=%v writes=%v", err, stock.stock.Quantity, stock.writes) }
+    t.Logf("CONFIRMED: invalid status returned %v after stock decreased from 10 to 8", err)
+}
+func TestAuditWitnessDuplicateCloseDeductsAgain(t *testing.T) {
+    uc, stock, report := auditStockFixture()
+    for i:=0; i<2; i++ { if err := uc.CloseTicketWithReport(context.Background(), report); err != nil { t.Fatal(err) } }
+    if stock.stock.Quantity != 6 || stock.writes != 2 { t.Fatalf("stock=%v writes=%v", stock.stock.Quantity, stock.writes) }
+    t.Log("CONFIRMED: identical report accepted twice; stock decreased from 10 to 6")
+}
+func TestAuditWitnessForeignCompanyStockAccepted(t *testing.T) {
+    uc, stock, report := auditStockFixture()
+    foreignCompany := uuid.New()
+    stock.stock.CompanyID = &foreignCompany
+    if err := uc.CloseTicketWithReport(context.Background(), report); err != nil { t.Fatal(err) }
+    if stock.stock.Quantity != 8 { t.Fatalf("stock=%v", stock.stock.Quantity) }
+    t.Log("CONFIRMED: foreign-company warehouse stock accepted and deducted")
+}
+type auditPlannedTemplates struct { plannedWorkRepoStub; template *domain.PlannedWorkTemplate; writes int }
+func (r *auditPlannedTemplates) GetTemplateByID(context.Context,uuid.UUID) (*domain.PlannedWorkTemplate,error) { copy:=*r.template;return &copy,nil }
+func (r *auditPlannedTemplates) UpdateTemplate(_ context.Context,value *domain.PlannedWorkTemplate) error { r.writes++;r.template=value;return nil }
+func TestAuditWitnessTemplateDeletionIgnoresActor(t *testing.T) {
+    company:=uuid.New()
+    repo:=&auditPlannedTemplates{template:&domain.PlannedWorkTemplate{ID:uuid.New(),CompanyID:&company,Active:true}}
+    uc:=&plannedWorkUseCase{repo:repo}
+    if err:=uc.DeleteTemplate(context.Background(),uuid.New(),repo.template.ID);err!=nil {t.Fatal(err)}
+    if repo.template.Active || repo.writes!=1 {t.Fatal("unexpected mutation result")}
+    t.Log("CONFIRMED: template was disabled using an unrelated actor; no user/company/object authorization lookup was required")
+}
+type auditFailedTicketLookup struct { domain.TicketRepository }
+func (auditFailedTicketLookup) GetTicketByID(context.Context,string) (*domain.Ticket,error) {return nil,errors.New("synthetic ticket storage failure")}
+func TestAuditWitnessPlannedWorkCompletesDespiteTicketSyncFailure(t *testing.T) {
+    actor,request:=uuid.New(),uuid.New()
+    repo:=&plannedWorkRepoStub{workToReturn:&domain.PlannedWork{ID:uuid.New(),RequestID:&request,Status:domain.PlannedWorkStatusInProgress}}
+    uc:=&plannedWorkUseCase{repo:repo,ticketRepo:auditFailedTicketLookup{}}
+    _,err:=uc.CompletePlannedWork(context.Background(),repo.workToReturn.ID,actor,"synthetic resolution")
+    if err!=nil || repo.updatedWork==nil || repo.updatedWork.Status!=domain.PlannedWorkStatusCompleted {t.Fatalf("err=%v work=%+v",err,repo.updatedWork)}
+    t.Log("CONFIRMED: planned work marked COMPLETED and success returned despite linked-ticket storage failure")
+}
+func TestAuditWitnessReopenedTicketRetainsResolvedAt(t *testing.T) {
+    done,active:=uuid.New(),uuid.New()
+    resolved:=time.Now().Add(-time.Hour)
+    repo:=&ticketActualDatesRepo{
+        ticket:&domain.Ticket{ID:uuid.New(),StatusID:done,CreatedAt:resolved.Add(-time.Hour),ResolvedAt:&resolved},
+        statusByID:map[uuid.UUID]*domain.TicketStatus{
+            done:{ID:done,Type:domain.StatusTypeCompleted,Name:"Completed"},
+            active:{ID:active,Type:domain.StatusTypeInProgress,Name:"In progress"},
+        },
+    }
+    uc:=&ticketUseCase{repo:repo}
+    err:=uc.UpdateStatus(context.Background(),repo.ticket.ID.String(),active,nil,nil,"","",nil,nil)
+    if err!=nil || repo.updatedTicket==nil || repo.updatedTicket.StatusID!=active || repo.updatedTicket.ResolvedAt==nil {t.Fatalf("err=%v ticket=%+v",err,repo.updatedTicket)}
+    t.Log("CONFIRMED: completed -> in_progress accepted but resolved_at remained set to the earlier completion time")
+}
+
+===== SD: permission guard / mock use case / workspace-sd-backend/internal/delivery/http/audit_planned_witness_test.go =====
+package http
+
+import (
+    "context"
+    "net/http"
+    "net/http/httptest"
+    "testing"
+    "github.com/google/uuid"
+    "github.com/labstack/echo/v4"
+    "github.com/user/sd-backend/internal/domain"
+)
+type auditPlannedUC struct { domain.PlannedWorkUseCase; deleted bool }
+func (u *auditPlannedUC) DeleteTemplate(context.Context,uuid.UUID,uuid.UUID) error { u.deleted=true; return nil }
+type auditPlannedUsers struct { domain.UserRepository; user *domain.User }
+func (u *auditPlannedUsers) GetUserByID(context.Context,uuid.UUID) (*domain.User,error) { return u.user,nil }
+func TestAuditWitnessManagerDenialDoesNotStopTemplateDeletion(t *testing.T) {
+    actor:=uuid.New()
+    uc:=&auditPlannedUC{}
+    h:=NewPlannedWorkHandler(uc,&auditPlannedUsers{user:&domain.User{ID:actor,Role:domain.RoleWorker}},nil,&accessScopeService{})
+    e:=echo.New();rec:=httptest.NewRecorder()
+    c:=e.NewContext(httptest.NewRequest(http.MethodDelete,"/planned-work-templates/synthetic",nil),rec)
+    c.Set("user_id",actor);c.SetParamNames("id");c.SetParamValues(uuid.NewString())
+    err:=h.DeleteTemplate(c)
+    if err!=nil || !uc.deleted || rec.Code!=403 { t.Fatalf("err=%v deletion_called=%v status=%d",err,uc.deleted,rec.Code) }
+    t.Log("CONFIRMED: ensureManagerAccess wrote HTTP403 but returned nil; DeleteTemplate use case still executed")
+}
+
+===== Monitoring XSS: isolated Playwright fixture =====
+import { readFile, writeFile } from 'node:fs/promises'
+import assert from 'node:assert/strict'
+import { chromium } from './sources/workspace-front/node_modules/playwright/index.mjs'
+const base = new URL('./', import.meta.url)
+const source = await readFile(new URL('sources/workspace-backend/internal/handler/api_monitoring_handler.go', base), 'utf8')
+const html = source.split('const dashboardHTML = `')[1].split('`')[0]
+assert.ok(html.startsWith('<!DOCTYPE html>'))
+const browser = await chromium.launch({ headless: true })
+try {
+  const page = await browser.newPage()
+  const payload = '<img src=x onerror="window.auditXss=1">'
+  await page.route('**/*', route => {
+    const url = route.request().url()
+    if (url === 'https://audit.invalid/api/admin/monitoring') return route.fulfill({
+      contentType: 'text/html', headers: {'Content-Security-Policy': "default-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com"}, body: html
+    })
+    if (url.includes('/stats')) return route.fulfill({json:{total_requests:1,third_party_requests:1,top_endpoints:[{path:payload,count:1}],top_origins:[],recent_logs:[]}})
+    return route.abort()
+  })
+  await page.goto('https://audit.invalid/api/admin/monitoring')
+  await page.waitForFunction(() => window.auditXss === 1)
+  const result = {confirmed:true, scenario:'Unescaped telemetry path executed a synthetic onerror handler in the current dashboard HTML under its CSP', production_touched:false}
+  await writeFile(new URL('monitoring-xss-result.json',base),JSON.stringify(result,null,2))
+  console.log(JSON.stringify(result))
+} finally { await browser.close() }

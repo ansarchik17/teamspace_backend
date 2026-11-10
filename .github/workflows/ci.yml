@@ -1,0 +1,408 @@
+# A run holds the shared host lock for its complete pipeline.
+# The job timeout includes queue waiting; individual steps retain bounded timeouts.
+name: Backend CI/CD
+'on':
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**/*.md'
+  pull_request:
+    branches:
+      - main
+permissions:
+  contents: read
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+env:
+  GOMAXPROCS: '1'
+  GOFLAGS: -p=1 -trimpath
+  CGO_ENABLED: '0'
+  GOMEMLIMIT: 768MiB
+  NODE_OPTIONS: --max-old-space-size=768
+  MAVEN_OPTS: -Xmx768m
+  DOCKER_BUILD_RECORD_UPLOAD: 'false'
+  GO_VERSION: 1.24.7
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/workspace-backend
+jobs:
+  checks:
+    name: Checks and build validation
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && !(github.event_name ==
+      'push' && github.ref == 'refs/heads/main')
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+      - backend
+    timeout-minutes: 360
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: workspace_test
+        ports:
+          - 5432
+        options: --memory=256m --memory-swap=256m --cpus=0.5 --health-cmd "pg_isready -U postgres -d workspace_test" --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - name: Use temporary registry credentials
+        working-directory: ${{ runner.temp }}
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/ci-docker"
+          chmod 700 "$RUNNER_TEMP/ci-docker"
+          echo "DOCKER_CONFIG=$RUNNER_TEMP/ci-docker" >> "$GITHUB_ENV"
+        timeout-minutes: 10
+      - name: 'Test and lint: Checkout'
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+        timeout-minutes: 20
+      - name: 'CI runner safeguards: Test locking and resource admission'
+        run: |
+          python3 -m unittest discover -s deploy/production/ci -v
+          python3 -B -m unittest discover -s deploy/production/maintenance -p test_ci_cache_maintenance.py -v
+          python3 -B -m unittest discover -s deploy/production/maintenance/docker-retention -v
+        timeout-minutes: 2
+      - name: 'Test and lint: Setup Go'
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+        timeout-minutes: 20
+      - name: 'Test and lint: Download dependencies'
+        run: go mod download
+        timeout-minutes: 20
+      - name: 'Test and lint: Verify preinstalled document converters'
+        run: command -v pdftotext libreoffice tesseract psql
+        timeout-minutes: 20
+      - name: 'Test and lint: Check formatting'
+        shell: bash
+        run: |
+          files="$(gofmt -l .)"
+          if [ -n "$files" ]; then
+            echo "These files are not formatted:"
+            echo "$files"
+            exit 1
+          fi
+        timeout-minutes: 20
+      - name: 'Test and lint: Vet'
+        run: go vet ./...
+        timeout-minutes: 20
+      - name: 'Test and lint: Test deployment safety'
+        run: bash deploy/production/scripts/deploy_test.sh
+        timeout-minutes: 20
+      - name: 'Test and lint: Build and start pinned MinIO for notes image integration test'
+        shell: bash
+        run: |
+          # Upstream community container registries no longer allow anonymous pulls.
+          # Build the official RELEASE.2025-04-22T22-12-26Z source, pinned to its commit.
+          python3 deploy/production/ci/minio-test-binary.py \
+            --cache "$RUNNER_TOOL_CACHE/workspace-ci/$GITHUB_REPOSITORY_ID/minio" \
+            --output "$RUNNER_TEMP/notes-minio"
+          docker run --detach --rm --memory=256m \
+            --cidfile "$RUNNER_TEMP/notes-minio.cid" \
+            --publish 127.0.0.1::9000 \
+            --volume "$RUNNER_TEMP/notes-minio:/usr/local/bin/minio:ro" \
+            --env MINIO_ROOT_USER=notes-test --env MINIO_ROOT_PASSWORD=notes-test-secret \
+            ubuntu:24.04 /usr/local/bin/minio server /data --address :9000
+          container_id="$(cat "$RUNNER_TEMP/notes-minio.cid")"
+          endpoint="$(docker port "$container_id" 9000/tcp)"
+          echo "TEST_NWS_MINIO_ENDPOINT=$endpoint" >> "$GITHUB_ENV"
+          for _attempt in $(seq 1 30); do
+            if curl --fail --silent "http://$endpoint/minio/health/live"; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs "$container_id"
+          exit 1
+        timeout-minutes: 20
+      - name: 'Test and lint: Run tests'
+        run: |
+          # Integration packages otherwise race while installing this shared extension.
+          psql "$TEST_MESSENGER_DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS btree_gist WITH SCHEMA public; CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public; CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;'
+          go test ./... -count=1 -timeout=10m
+        env:
+          TEST_MESSENGER_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/workspace_test?sslmode=disable
+          IFORM_TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/workspace_test?sslmode=disable
+          TEST_DOCUMENT_SEARCH_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/workspace_test?sslmode=disable
+          TEST_NWS_MINIO_ACCESS_KEY: notes-test
+          TEST_NWS_MINIO_SECRET_KEY: notes-test-secret
+          NOTEBOOK_REQUIRE_CONVERTERS: '1'
+        timeout-minutes: 20
+      - name: 'Test and lint: Remove notes test MinIO'
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$RUNNER_TEMP/notes-minio.cid" ]; then
+            docker rm --force "$(cat "$RUNNER_TEMP/notes-minio.cid")" || true
+          fi
+        timeout-minutes: 20
+      - name: 'Test and lint: Build API'
+        run: go build ./cmd/api
+        timeout-minutes: 20
+      - name: 'Production document converters: Verify document converters in the production runtime as the app user'
+        run: |
+          CGO_ENABLED=0 go test -c -o "$RUNNER_TEMP/notebook-runtime.test" ./internal/service
+          docker run --rm --memory=768m --memory-swap=768m --cpus=1 \
+            -v "$RUNNER_TEMP/notebook-runtime.test:/tests/notebook.test:ro" \
+            -v "$PWD/internal/service/testdata:/tests/testdata:ro" \
+            -v "$PWD/docker/install-runtime.sh:/tests/install-runtime.sh:ro" \
+            -w /tests -e NOTEBOOK_REQUIRE_CONVERTERS=1 -e HOME=/root \
+            ubuntu:24.04 sh -ec '
+              sh /tests/install-runtime.sh
+              gosu app /tests/notebook.test -test.v -test.run "TestNotebook(NativeExtractors|ScanOCR|Password)"
+            '
+        timeout-minutes: 30
+  release:
+    name: Tests, build and deploy
+    if: (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && (github.event_name == 'push'
+      && github.ref == 'refs/heads/main')
+    runs-on:
+      - self-hosted
+      - linux
+      - x64
+      - backend
+    timeout-minutes: 360
+    permissions:
+      contents: read
+      packages: write
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: workspace_test
+        ports:
+          - 5432
+        options: --memory=256m --memory-swap=256m --cpus=0.5 --health-cmd "pg_isready -U postgres -d workspace_test" --health-interval 5s --health-timeout 5s --health-retries 10
+    environment: production
+    steps:
+      - name: Use temporary registry credentials
+        working-directory: ${{ runner.temp }}
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/ci-docker"
+          chmod 700 "$RUNNER_TEMP/ci-docker"
+          echo "DOCKER_CONFIG=$RUNNER_TEMP/ci-docker" >> "$GITHUB_ENV"
+        timeout-minutes: 10
+      - name: 'Test and lint: Checkout'
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+        timeout-minutes: 20
+      - name: 'CI runner safeguards: Test locking and resource admission'
+        run: |
+          python3 -m unittest discover -s deploy/production/ci -v
+          python3 -B -m unittest discover -s deploy/production/maintenance -p test_ci_cache_maintenance.py -v
+          python3 -B -m unittest discover -s deploy/production/maintenance/docker-retention -v
+        timeout-minutes: 2
+      - name: 'Test and lint: Setup Go'
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+        timeout-minutes: 20
+      - name: 'Test and lint: Download dependencies'
+        run: go mod download
+        timeout-minutes: 20
+      - name: 'Test and lint: Verify preinstalled document converters'
+        run: command -v pdftotext libreoffice tesseract psql
+        timeout-minutes: 20
+      - name: 'Test and lint: Check formatting'
+        shell: bash
+        run: |
+          files="$(gofmt -l .)"
+          if [ -n "$files" ]; then
+            echo "These files are not formatted:"
+            echo "$files"
+            exit 1
+          fi
+        timeout-minutes: 20
+      - name: 'Test and lint: Vet'
+        run: go vet ./...
+        timeout-minutes: 20
+      - name: 'Test and lint: Test deployment safety'
+        run: bash deploy/production/scripts/deploy_test.sh
+        timeout-minutes: 20
+      - name: 'Test and lint: Build and start pinned MinIO for notes image integration test'
+        shell: bash
+        run: |
+          # Upstream community container registries no longer allow anonymous pulls.
+          # Build the official RELEASE.2025-04-22T22-12-26Z source, pinned to its commit.
+          python3 deploy/production/ci/minio-test-binary.py \
+            --cache "$RUNNER_TOOL_CACHE/workspace-ci/$GITHUB_REPOSITORY_ID/minio" \
+            --output "$RUNNER_TEMP/notes-minio"
+          docker run --detach --rm --memory=256m \
+            --cidfile "$RUNNER_TEMP/notes-minio.cid" \
+            --publish 127.0.0.1::9000 \
+            --volume "$RUNNER_TEMP/notes-minio:/usr/local/bin/minio:ro" \
+            --env MINIO_ROOT_USER=notes-test --env MINIO_ROOT_PASSWORD=notes-test-secret \
+            ubuntu:24.04 /usr/local/bin/minio server /data --address :9000
+          container_id="$(cat "$RUNNER_TEMP/notes-minio.cid")"
+          endpoint="$(docker port "$container_id" 9000/tcp)"
+          echo "TEST_NWS_MINIO_ENDPOINT=$endpoint" >> "$GITHUB_ENV"
+          for _attempt in $(seq 1 30); do
+            if curl --fail --silent "http://$endpoint/minio/health/live"; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs "$container_id"
+          exit 1
+        timeout-minutes: 20
+      - name: 'Test and lint: Run tests'
+        run: |
+          # Integration packages otherwise race while installing this shared extension.
+          psql "$TEST_MESSENGER_DATABASE_URL" -v ON_ERROR_STOP=1 -c 'CREATE EXTENSION IF NOT EXISTS btree_gist WITH SCHEMA public; CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public; CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public;'
+          go test ./... -count=1 -timeout=10m
+        env:
+          TEST_MESSENGER_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/workspace_test?sslmode=disable
+          IFORM_TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/workspace_test?sslmode=disable
+          TEST_DOCUMENT_SEARCH_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/workspace_test?sslmode=disable
+          TEST_NWS_MINIO_ACCESS_KEY: notes-test
+          TEST_NWS_MINIO_SECRET_KEY: notes-test-secret
+          NOTEBOOK_REQUIRE_CONVERTERS: '1'
+        timeout-minutes: 20
+      - name: 'Test and lint: Remove notes test MinIO'
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "$RUNNER_TEMP/notes-minio.cid" ]; then
+            docker rm --force "$(cat "$RUNNER_TEMP/notes-minio.cid")" || true
+          fi
+        timeout-minutes: 20
+      - name: 'Test and lint: Build API'
+        run: |
+          mkdir -p ci-out
+          for target in api user-merge migrate ai-accounting; do
+            name="$target"
+            if [ "$target" = api ]; then name=workspace; fi
+            CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath \
+              -ldflags="-w -s -X main.Version=${GITHUB_SHA} -X main.BuildTime=${GITHUB_RUN_ID}" \
+              -o "ci-out/$name" "./cmd/$target"
+          done
+        timeout-minutes: 20
+      - name: Stop the disposable test database before building images
+        env:
+          TEST_POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+        run: docker stop "$TEST_POSTGRES_CONTAINER"
+        timeout-minutes: 10
+      - name: 'Build and publish image: Set up bounded local image builder'
+        uses: docker/setup-buildx-action@v3
+        with:
+          name: ci-${{ github.event.repository.name }}
+          keep-state: true
+          cache-binary: false
+          driver-opts: |
+            memory=1g
+            memory-swap=1280m
+            cpu-quota=100000
+          buildkitd-config-inline: |
+            [worker.oci]
+              max-parallelism = 1
+              gc = true
+              reservedSpace = "512MB"
+              maxUsedSpace = "8GB"
+              minFreeSpace = "30GB"
+        timeout-minutes: 30
+      - name: 'Build and publish image: Login to GHCR'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+        timeout-minutes: 30
+      - name: Resolve unchanged converter runtime
+        id: runtime_cache
+        run: python3 deploy/production/ci/reuse-image.py --image "ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/workspace-backend" --context docker
+        timeout-minutes: 3
+      - name: Build converter runtime when inputs change or weekly refresh is due
+        if: steps.runtime_cache.outputs.hit != 'true'
+        id: runtime_build
+        uses: docker/build-push-action@v6
+        with:
+          context: docker
+          pull: true
+          no-cache: true
+          platforms: linux/amd64
+          push: true
+          load: true
+          tags: ${{ steps.runtime_cache.outputs.tag }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+        timeout-minutes: 30
+      - name: 'Production document converters: Verify document converters in the production runtime as the app user'
+        env:
+          CONVERTER_RUNTIME: ${{ steps.runtime_cache.outputs.tag }}@${{ steps.runtime_cache.outputs.digest || steps.runtime_build.outputs.digest }}
+        run: |
+          CGO_ENABLED=0 go test -c -o "$RUNNER_TEMP/notebook-runtime.test" ./internal/service
+          docker run --rm --memory=768m --memory-swap=768m --cpus=1 \
+            -v "$RUNNER_TEMP/notebook-runtime.test:/tests/notebook.test:ro" \
+            -v "$PWD/internal/service/testdata:/tests/testdata:ro" \
+            -w /tests -e NOTEBOOK_REQUIRE_CONVERTERS=1 -e HOME=/home/app \
+            --user app "$CONVERTER_RUNTIME" \
+            /tests/notebook.test -test.v -test.run "TestNotebook(NativeExtractors|ScanOCR|Password)"
+        timeout-minutes: 30
+      - name: 'Build and publish image: Build and push'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.ci
+          push: true
+          # Production deploys on this host; keep the exact result in Docker too.
+          load: true
+          cache-to: type=inline
+          build-args: |
+            RUNTIME_IMAGE=${{ steps.runtime_cache.outputs.tag }}@${{ steps.runtime_cache.outputs.digest || steps.runtime_build.outputs.digest }}
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.IMAGE_NAME }}:main
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+        timeout-minutes: 30
+      - name: 'Deploy to production: Install production deployment files'
+        run: |
+          install -d -m 0750 /opt/workspace/scripts /opt/workspace/releases /opt/workspace/nginx
+          install -m 0640 deploy/production/compose.prod.yml /opt/workspace/compose.prod.yml
+          install -m 0640 deploy/production/compose.prod.yml.shared.yml /opt/workspace/compose.prod.yml.shared.yml
+          install -m 0750 deploy/production/scripts/*.sh /opt/workspace/scripts/
+          install -m 0640 deploy/production/nginx/workspace.conf /opt/workspace/nginx/workspace.conf
+          install -m 0640 deploy/production/nginx/tenant-workspace-wildcard.conf /opt/workspace/nginx/tenant-workspace-wildcard.conf
+          install -m 0640 deploy/production/nginx/stalwart.conf /opt/workspace/nginx/stalwart.conf
+          install -m 0640 deploy/production/.env.example /opt/workspace/.env.example
+        timeout-minutes: 20
+      - name: 'Deploy to production: Login to GHCR'
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if printf '%s' "$GHCR_TOKEN" | timeout 90s docker login ghcr.io --username "$GHCR_USER" --password-stdin; then
+              exit 0
+            fi
+            echo "GHCR login failed (attempt ${attempt}/5); retrying..." >&2
+            sleep $((attempt * 10))
+          done
+          exit 1
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+        timeout-minutes: 20
+      - name: 'Deploy to production: Select backend image'
+        run: |
+          /opt/workspace/scripts/set-image.sh backend \
+            "${{ env.IMAGE_NAME }}:${{ github.sha }}"
+        timeout-minutes: 20
+      - name: 'Deploy to production: Deploy backend'
+        run: |
+          if ! /opt/workspace/scripts/deploy.sh backend; then
+            /opt/workspace/scripts/deploy.sh backend rollback || true
+            exit 1
+          fi
+        timeout-minutes: 20

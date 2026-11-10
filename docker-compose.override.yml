@@ -1,0 +1,9 @@
+services:
+  api:
+    environment:
+      KEYCLOAK_URL: http://host.docker.internal:8081
+      KEYCLOAK_PUBLIC_URL: http://localhost:8081
+      KEYCLOAK_ISSUER: http://localhost:8081/realms/master
+      KEYCLOAK_JWKS_URL: http://host.docker.internal:8081/realms/master/protocol/openid-connect/certs
+      KEYCLOAK_TRUSTED_AUDIENCES: account,alem-workspace,workspace-odo-exchange
+      ODO_HANDOFF_INTERNAL_TOKEN: ${ODO_HANDOFF_INTERNAL_TOKEN:-}

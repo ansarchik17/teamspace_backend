@@ -1,0 +1,22 @@
+{
+  "name": "teamspace-backend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:api": "node scripts/dev.mjs --api-only",
+    "dev:infra": "node scripts/dev.mjs --infra-only",
+    "dev:auth": "node scripts/dev.mjs --auth-only",
+    "dev:stop": "node scripts/dev.mjs --stop",
+    "dev:logs": "node scripts/dev.mjs --logs",
+    "seed:director": "node scripts/seed-director.mjs",
+    "seed:admin": "node scripts/seed-admin.mjs",
+    "build": "go build -o bin/api ./cmd/api",
+    "test": "go test ./...",
+    "vet": "go vet ./..."
+  },
+  "engines": {
+    "node": ">=22.21.1"
+  }
+}

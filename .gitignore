@@ -33,6 +33,7 @@ vendor/
 .env.local
 .env.*.local
 !.env.example
+!.env.development.example
 
 # Logs
 *.log
@@ -73,6 +74,7 @@ go.sum.backup
 *.json
 !package.json
 !manifest.json
+!docker/keycloak-dev/Workspace-realm.json
 !postman_collection.json
 !docs/swagger.json
 !deploy/onlyoffice/auto-save.json

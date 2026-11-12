@@ -4,18 +4,124 @@ Go backend for messenger, drive, kanban, calendar and notebook features. This br
 
 ## Run
 
-Requirements:
-- Go 1.24+
-- PostgreSQL
-- Redis optional
-- MinIO for file attachments
+Для локальной разработки нужны Node.js 22.21.1+ (см. `.nvmrc`), Go
+(toolchain `go1.24.7` указан в `go.mod`) и запущенный Docker Engine с Compose v2.
 
-Setup:
+В каталоге backend:
+
 ```bash
-cp .env.example .env
-make deps
-make run
+npm run dev
 ```
+
+При первом запуске команда создаёт `.env` из `.env.development.example`, генерирует
+`JWT_SECRET` и `PIN_CRYPTO_KEY`, запускает PostgreSQL, Redis, MinIO и Keycloak, ждёт их
+готовности и собирает настоящий Go API. Backend остаётся Go-приложением;
+устанавливать npm-зависимости в этом каталоге не нужно. Существующий `.env`
+сохраняется, переменные терминала имеют приоритет. Первая сборка требует
+доступа к Go-модулям и Docker-образам.
+
+MinIO собирается локально из официальных исходников с закреплённым commit
+`0d7408fc9969caf07de6a8c3a84f9fbb10a6739e`, тем же, что используется в CI.
+Готовый образ `quay.io/minio/minio` не скачивается: registry может отвечать
+`unauthorized`. Первая сборка MinIO может занять несколько минут; последующие
+запуски используют Docker build cache. Каталог сборки — `docker/minio-dev`.
+
+В другом терминале:
+
+```bash
+cd ../teamspace_frontend
+npm ci
+npm run dev
+```
+
+Frontend: **http://localhost:5173/web/**. API: **http://localhost:8080**.
+Проверка API: `/health`, `/ready`; Swagger: `/swagger/index.html`.
+Frontend проксирует `/api` и WebSocket на `127.0.0.1:8080`.
+
+| Сервис | Локальный адрес |
+| --- | --- |
+| PostgreSQL | `127.0.0.1:15433`, база `workspace` |
+| Redis | `127.0.0.1:16379` |
+| MinIO API | `127.0.0.1:19000` |
+| MinIO console | `http://127.0.0.1:19002` |
+| Keycloak | `http://localhost:18082`, realm `Workspace` |
+
+Compose использует отдельный проект `teamspace-dev` и постоянные volumes.
+Ctrl+C останавливает Go API. Контейнеры и данные сохраняются; остановить
+контейнеры можно через `npm run dev:stop`. Изменения Go-кода требуют перезапуска
+команды; frontend поддерживает HMR.
+
+Дополнительные команды:
+
+```bash
+npm run dev:infra  # Все локальные сервисы без Go API, включая Keycloak
+npm run dev:auth   # Только Keycloak; после его старта перезапустите API
+npm run dev:api    # Только Go API с текущим .env, без Docker
+npm run dev:logs   # Логи локальных контейнеров; API пишет в свой терминал
+npm run dev:stop   # Остановить локальные контейнеры, сохранив данные
+npm run build
+npm test
+npm run vet
+```
+
+`dev:api` подходит для уже настроенных зависимостей. API автоматически применяет
+миграции к базе из `.env`. Для старта в существующей инфраструктуре можно
+использовать полный `.env.example`; его порты и SSO-настройки нужно согласовать
+со своими сервисами. Автоматический Compose-запуск принимает только локальные
+PostgreSQL, Redis, MinIO и Keycloak с `ENV=development`.
+
+Keycloak получает realm `Workspace`, роль `user` и public client `workspace-client`
+из `docker/keycloak-dev/Workspace-realm.json`. Регистрация выполняется по приглашению
+через backend; открытая регистрация в самом Keycloak выключена. Данные Keycloak
+хранятся в отдельном постоянном volume. Его административные credentials берутся
+из `KEYCLOAK_ADMIN_USER` / `KEYCLOAK_ADMIN_PASS` в `.env`; это отдельная учётная
+запись от администратора платформы TeamSpace. Порт задаётся `KEYCLOAK_HTTP_PORT`
+(по умолчанию `18082`). При смене порта согласуйте его с `KEYCLOAK_URL`,
+`KEYCLOAK_PUBLIC_URL`, `KEYCLOAK_ISSUER` и `KEYCLOAK_JWKS_URL`;
+launcher проверяет их согласованность перед запуском.
+
+Локальный Compose не поднимает LiveKit/QMeet, EPS/mail, Growy, ODO, IForm,
+OnlyOffice/Collabora или AI gateway. Для них нужны отдельные сервисы
+и параметры из `.env.example`. Существующие локальные пользователи без `keycloak_id`
+могут входить по локальному паролю, но регистрация новых пользователей по приглашению
+требует Keycloak. Приглашения и проверочные коды требуют настроенного SMTP.
+Текущие миграции содержат seed
+администратора; связанные риски описаны в аудите.
+
+Анализ архитектуры, проблем и результатов проверок:
+[аудит backend и frontend](docs/audits/local-development-2026-11-12.md).
+
+### Тестовый директор компании
+
+После старта backend и применения миграций выполните в другом терминале:
+
+```bash
+npm run seed:director
+```
+
+Команда создаёт компанию **TeamSpace Demo** и пользователя **director.demo**
+(`director@teamspace.test`). Случайный пароль выводится после успешной проверки
+аккаунта и сохраняется в игнорируемом Git файле `.cache/dev-director.json`
+с правами `0600`. Вход: `http://localhost:5173/web/login`.
+
+Пользователь имеет глобальную роль `user` и назначается владельцем своей компании
+через `organizations.owner_id`. Создание выполняется одной транзакцией только
+в PostgreSQL Compose-проекта `teamspace-dev` при `ENV=development`.
+Повторный запуск проверяет того же директора и пароль. Если тестовые имя/email
+или slug уже заняты другим либо изменённым аккаунтом, команда завершается
+без изменения существующих пользователей. Keycloak для этого локального
+парольного аккаунта не требуется.
+
+### Локальный администратор платформы
+
+При запущенном backend команда `npm run seed:admin` создаёт отдельного
+администратора с email `admin@admin.com`, логином `admin.platform` и ролью `admin`,
+без привязки к компании. Пароль читается из `.cache/dev-admin.json`
+(`email`, `username`, `password`); этот файл исключён из Git и должен иметь права
+`0600`. Команда предназначена только для локального `ENV=development` и
+PostgreSQL проекта `teamspace-dev`. Совпадающий аккаунт проверяется повторно;
+существующие пользователи с другими правами или credentials не изменяются.
+Создание компаний: `http://localhost:5173/web/platform/administration`.
 
 Useful commands:
 ```bash

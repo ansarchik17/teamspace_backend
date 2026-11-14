@@ -52,7 +52,7 @@ func (s redisChatActionStore) Take(ctx context.Context, key string) (string, err
 var aiChatWriteTitles = map[string]string{
 	"create_calendar_event": "Создать встречу", "set_event_reminder": "Установить напоминание",
 	"cancel_calendar_event": "Отменить встречу", "create_kanban_task": "Создать задачу",
-	"close_kanban_task": "Закрыть задачу", "send_broadcast": "Отправить сообщение",
+	"close_kanban_task":     "Закрыть задачу",
 	"create_online_meeting": "Создать онлайн-встречу",
 }
 
@@ -196,10 +196,7 @@ func validateChatToolArguments(name, raw string, tools []alem.FunctionTool) (map
 		if firstErr != nil || lastErr != nil || !end.After(start) {
 			return nil, fmt.Errorf("укажите начало и окончание с часовым поясом; окончание должно быть позже начала")
 		}
-	case "send_broadcast":
-		if recipients, _ := args["recipient_user_ids"].([]any); len(recipients) == 0 || text("message") == "" {
-			return nil, fmt.Errorf("укажите сообщение и получателей")
-		}
+
 	}
 	if minutes, ok := args["minutes_before"].(float64); ok && (minutes < 0 || minutes > 525600) {
 		return nil, fmt.Errorf("некорректное время напоминания")
@@ -263,9 +260,6 @@ func validateChatToolValue(value any, schema map[string]any) error {
 }
 
 func (s *SmartAgentService) runMainChatTool(ctx context.Context, identity AIDataIdentity, call alem.ToolCall, userTexts ...string) (AIDataResult, []alem.DataCard, bool) {
-	if call.Function.Name == "send_broadcast" && chatEmailRequested(strings.Join(userTexts, "\n")) {
-		return AIDataResult{Status: "email_draft_required", Message: "Пользователь просит email. Используй prepare_email_draft, уточни недостающие тему и содержание. Не отправляй сообщение в мессенджере вместо письма."}, nil, false
-	}
 	args, err := validateChatToolArguments(call.Function.Name, call.Function.Arguments, s.mainChatTools())
 	if err != nil {
 		var details *chatActionDetailsRequired

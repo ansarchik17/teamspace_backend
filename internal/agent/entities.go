@@ -116,8 +116,6 @@ func (e *simpleEntityExtractor) Extract(_ context.Context, req *domain.AgentChat
 		entities["query"] = normalizeLookupQuery(message)
 		entities["resource_type"] = detectDriveResourceType(lower)
 		entities["role"] = detectDriveRole(lower)
-	case domain.AgentIntentSendBroadcast:
-		entities["message"] = normalizeBroadcastContent(message)
 	case domain.AgentIntentFillForm:
 		entities["form_name"] = extractQuoted(message)
 	}
@@ -286,22 +284,6 @@ func normalizeNoteContent(message string, title interface{}) string {
 		return ""
 	}
 	return content
-}
-
-func normalizeBroadcastContent(message string) string {
-	trimmed := strings.TrimSpace(message)
-	prefixes := []string{"сделай рассылку", "отправь всем", "рассылка", "send broadcast", "broadcast"}
-	lower := strings.ToLower(trimmed)
-	for _, prefix := range prefixes {
-		if strings.HasPrefix(lower, prefix) {
-			candidate := strings.TrimSpace(trimmed[len(prefix):])
-			candidate = strings.TrimLeft(candidate, ":,- ")
-			if candidate != "" {
-				return candidate
-			}
-		}
-	}
-	return trimmed
 }
 
 func extractUUID(message string) (string, bool) {

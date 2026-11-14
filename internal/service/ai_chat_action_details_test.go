@@ -19,7 +19,6 @@ func chatActionFixtures() map[string]struct{ raw, text string } {
 		"create_kanban_task":    {`{"title":"Отчет","priority":"high","due_at":"2026-10-24T18:00:00+05:00","assignee_ids":[38],"participant_query":"Арсен"}`, "Создай задачу Отчет для Арсена, приоритет высокий, срок 2026-10-24"},
 		"create_calendar_event": {`{"title":"Обзор","start_time":"2026-10-24T10:00:00+05:00","end_time":"2026-10-24T11:00:00+05:00","attendee_ids":[]}`, "Личная встреча Обзор 2026-10-24 с 10:00 до 11:00"},
 		"create_online_meeting": {`{"meeting_name":"Обзор","from_date":"2026-10-24T10:00:00+05:00","to_date":"2026-10-24T11:00:00+05:00","attendee_ids":[38],"participant_query":"Арсен"}`, "Видеовстреча Обзор с Арсеном 2026-10-24 с 10:00 до 11:00"},
-		"send_broadcast":        {`{"message":"Встречу переносим на завтра","recipient_user_ids":[38],"participant_query":"Арсен"}`, "Напиши Арсену: Встречу переносим на завтра"},
 		"set_event_reminder":    {`{"event_id":"` + event + `","event_query":"Обзор","minutes_before":15}`, "Напомни о встрече Обзор за 15 минут"},
 		"cancel_calendar_event": {`{"event_id":"` + event + `","event_query":"Обзор"}`, "Отмени встречу Обзор"},
 		"close_kanban_task":     {`{"task_id":"` + task + `","task_query":"Отчет"}`, "Закрой задачу Отчет"},
@@ -232,7 +231,7 @@ func TestSmartAgentLegacyCannotExecuteIncompleteActionBatch(t *testing.T) {
 
 func TestMainChatActionCannotInventParticipantsOrSubstituteEmail(t *testing.T) {
 	ctx, identity := chatTestIdentity(t)
-	for _, name := range []string{"create_kanban_task", "send_broadcast", "create_online_meeting"} {
+	for _, name := range []string{"create_kanban_task", "create_online_meeting"} {
 		fixture := chatActionFixtures()[name]
 		store := chatMemoryActions{}
 		agent := &SmartAgentService{actionStore: store}
@@ -244,27 +243,22 @@ func TestMainChatActionCannotInventParticipantsOrSubstituteEmail(t *testing.T) {
 		require.Empty(t, store)
 	}
 	agent := &SmartAgentService{actionStore: chatMemoryActions{}}
-	fixture := chatActionFixtures()["send_broadcast"]
-	result, cards, pending := agent.runMainChatTool(ctx, identity, chatAgentCall("send_broadcast", fixture.raw), "Напиши письмо Арсену: Встречу переносим на завтра")
-	require.Equal(t, "email_draft_required", result.Status)
-	require.Empty(t, cards)
-	require.False(t, pending)
 	reminder := chatActionFixtures()["set_event_reminder"]
-	result, _, pending = agent.runMainChatTool(ctx, identity, chatAgentCall("set_event_reminder", reminder.raw), "Напомни о встрече Обзор через 15 минут")
+	result, _, pending := agent.runMainChatTool(ctx, identity, chatAgentCall("set_event_reminder", reminder.raw), "Напомни о встрече Обзор через 15 минут")
 	require.Equal(t, "clarification_required", result.Status)
 	require.False(t, pending)
 }
 
 func TestMainChatLegacyBatchPreflightIsAllOrNothing(t *testing.T) {
 	fixtures := chatActionFixtures()
-	first := chatAgentCall("send_broadcast", fixtures["send_broadcast"].raw)
+	first := chatAgentCall("create_kanban_task", fixtures["create_kanban_task"].raw)
 	second := chatAgentCall("create_calendar_event", `{}`)
 	second.ID = "second"
-	prepared, err := preflightChatActionBatch([]alem.ToolCall{first, second}, llmToolsToAlem(getToolsSchema()), fixtures["send_broadcast"].text)
+	prepared, err := preflightChatActionBatch([]alem.ToolCall{first, second}, llmToolsToAlem(getToolsSchema()), fixtures["create_kanban_task"].text)
 	require.Error(t, err)
 	require.Nil(t, prepared)
 	second = first
-	_, err = preflightChatActionBatch([]alem.ToolCall{first, second}, llmToolsToAlem(getToolsSchema()), fixtures["send_broadcast"].text)
+	_, err = preflightChatActionBatch([]alem.ToolCall{first, second}, llmToolsToAlem(getToolsSchema()), fixtures["create_kanban_task"].text)
 	require.Error(t, err, "duplicate tool IDs must not swap frozen action parameters")
 }
 
@@ -296,9 +290,6 @@ func TestMainChatEmailPreparationFeedbackIsNotAnEvidenceSource(t *testing.T) {
 						} else {
 							raw = `{"recipient":"Арсен","content_brief":"о переносе встречи на завтра","subject":"Перенос встречи","body":"Предлагаю перенести встречу на завтра."}`
 						}
-					} else if steps == 1 {
-						name = "send_broadcast"
-						raw = `{"message":"Привет","recipient_user_ids":[38],"participant_query":"Арсен"}`
 					}
 					if jsonMode {
 						return personalResponse(alem.Message{Role: "assistant", Content: `{"action":"tool","name":"` + name + `","arguments":` + raw + `}`}), nil
@@ -311,7 +302,11 @@ func TestMainChatEmailPreparationFeedbackIsNotAnEvidenceSource(t *testing.T) {
 				}
 				response, err := completeWithUserData(ctx, client, &fakePersonalReader{}, identity, alem.ChatCompletionRequest{Messages: []alem.Message{{Role: "user", Content: text}}}, agent)
 				require.NoError(t, err)
-				require.Equal(t, 2, steps)
+				expectedSteps := 1
+				if compose {
+					expectedSteps = 2
+				}
+				require.Equal(t, expectedSteps, steps)
 				require.Empty(t, response.DataSources)
 				require.Empty(t, store)
 				if compose {

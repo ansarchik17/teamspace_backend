@@ -92,9 +92,6 @@ func (s *changePasswordUserRepoStub) GetNeverLoggedIn(_ context.Context) ([]*dom
 	return nil, nil
 }
 
-func (s *changePasswordUserRepoStub) ShareConversation(_ context.Context, _, _ int64) (bool, error) {
-	return false, nil
-}
 func (s *changePasswordUserRepoStub) ExportMinistryUsers(_ context.Context, _ int64, _ []int64, _ []int64, _ []int64) ([]domain.MinistryUserExportRow, error) {
 	return nil, nil
 }
@@ -160,7 +157,6 @@ func TestChangePasswordRollsBackWithFreshContextWhenBackupSaveCancelsRequest(t *
 			Email:      "user@example.com",
 			KeycloakID: &keycloakID,
 		}},
-		nil,
 		nil,
 		nil,
 		keycloak.New(kcServer.URL, "test-realm", "test-client", ""),

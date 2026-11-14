@@ -87,7 +87,7 @@ func TestCorporateLoginRechecksProviderAndUsesBroker(t *testing.T) {
 		{"resolver unavailable", nil, 404},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			svc := auth.NewKeycloakService(&authHandlerUserRepoStub{}, nil, nil, &authHandlerChatServiceStub{}, keycloak.NewWithPublicURL("http://keycloak:8080", "https://login.example.com", "test", "workspace", "test-secret"), nil, "test")
+			svc := auth.NewKeycloakService(&authHandlerUserRepoStub{}, nil, nil, keycloak.NewWithPublicURL("http://keycloak:8080", "https://login.example.com", "test", "workspace", "test-secret"), nil, "test")
 			h := NewAuthHandler(svc, nil, nil, zap.NewNop())
 			if tt.resolver != nil {
 				h.SetOrganizationIdentityProviderResolver(tt.resolver)

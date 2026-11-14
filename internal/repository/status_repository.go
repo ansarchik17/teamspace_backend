@@ -19,40 +19,18 @@ func NewStatusRepository(db *pgxpool.Pool, logger *zap.Logger) *StatusRepository
 	}
 }
 
-// GetInterestedUsers returns list of user IDs who should receive status updates for the given user
-// This includes:
-// - Users who have personal conversations with this user
-// - Users who are in the same groups as this user
+// GetInterestedUsers returns active colleagues in the user's company.
+// Presence delivery is scoped by organization and does not depend on chats.
 func (r *StatusRepository) GetInterestedUsers(ctx context.Context, userID int64) ([]int64, error) {
 	query := `
-		SELECT DISTINCT u.user_id
-		FROM (
-			-- Users from personal conversations
-			SELECT cp2.user_id
-			FROM conversation_participants cp1
-			JOIN conversation_participants cp2 ON cp1.conversation_id = cp2.conversation_id
-			JOIN conversations c ON c.id = cp1.conversation_id
-			WHERE cp1.user_id = $1 
-			  AND cp2.user_id != $1
-			  -- AND c.type = 'personal' -- removed to include group chats
-			  AND cp1.left_at IS NULL
-			  AND cp2.left_at IS NULL
-			  AND c.deleted_at IS NULL
-			
-			UNION
-			
-			-- Users from group conversations
-			SELECT gm2.user_id
-			FROM group_members gm1
-			JOIN group_members gm2 ON gm1.group_id = gm2.group_id
-			JOIN groups g ON g.id = gm1.group_id
-			WHERE gm1.user_id = $1
-			  AND gm2.user_id != $1
-			  AND gm1.left_at IS NULL
-			  AND gm2.left_at IS NULL
-			  AND g.deleted_at IS NULL
-			  AND g.is_active = true
-		) u
+		SELECT colleague.id
+		FROM users subject
+		JOIN users colleague ON colleague.organization_id = subject.organization_id
+		WHERE subject.id = $1
+		  AND subject.organization_id IS NOT NULL
+		  AND subject.is_active = true
+		  AND colleague.is_active = true
+		  AND colleague.id <> subject.id
 	`
 
 	rows, err := r.db.Query(ctx, query, userID)

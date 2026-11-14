@@ -50,7 +50,7 @@ func TestHRPreparesCredentialWithoutOpeningEarlyPasswordLogin(t *testing.T) {
 		}
 	}))
 	defer source.Close()
-	svc := NewKeycloakService(repo, nil, nil, nil, nil, keycloak.NewAdmin(source.URL, "master", "admin", "admin"), "test")
+	svc := NewKeycloakService(repo, nil, nil, nil, keycloak.NewAdmin(source.URL, "master", "admin", "admin"), "test")
 	require.NoError(t, svc.InitializeIFormEmployeeCredential(context.Background(), 1, 24, company, request, "Prepared123!"))
 	require.Equal(t, 1, resets)
 	require.Error(t, svc.checkLoginAccess(context.Background(), 24), "preparation opened early access")

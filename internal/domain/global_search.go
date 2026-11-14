@@ -26,28 +26,17 @@ type SearchResult struct {
 }
 
 type SearchAllResponse struct {
-	Success       bool                  `json:"success"`
-	Data          SearchAllData         `json:"data"`
-	Users         []*UserResponse       `json:"users"`
-	Tasks         []*Task               `json:"tasks"`
-	Organizations []SearchResult        `json:"organizations"`
-	Messages      []MessageSearchResult `json:"messages"`
-	Events        []Event               `json:"events"`
-	Meetings      []Event               `json:"meetings"`
-	Documents     []DriveItem           `json:"documents"`
-	Notes         []Note                `json:"notes"`
-}
-
-type MessageSearchResult struct {
-	ID             string    `json:"id"`
-	ConversationID string    `json:"conversation_id"`
-	SenderID       int64     `json:"sender_id"`
-	SenderUsername string    `json:"sender_username"`
-	SenderFullName string    `json:"sender_full_name"`
-	Content        string    `json:"content"`
-	Type           string    `json:"type"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
+	Success       bool            `json:"success"`
+	Data          SearchAllData   `json:"data"`
+	Users         []*UserResponse `json:"users"`
+	Tasks         []*Task         `json:"tasks"`
+	Organizations []SearchResult  `json:"organizations"`
+	// Messages is retained as an empty array for existing search clients.
+	Messages  []any       `json:"messages"`
+	Events    []Event     `json:"events"`
+	Meetings  []Event     `json:"meetings"`
+	Documents []DriveItem `json:"documents"`
+	Notes     []Note      `json:"notes"`
 }
 
 type GlobalSearchItem = SearchResultItem

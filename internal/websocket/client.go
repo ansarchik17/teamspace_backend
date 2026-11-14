@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -30,7 +29,6 @@ type Client struct {
 
 	closeOnce sync.Once
 	sendMu    sync.RWMutex
-	syncing   atomic.Bool
 }
 
 func NewClient(userID int64, sessionKey string, conn *websocket.Conn, hub *Hub, logger *zap.Logger) *Client {
@@ -171,10 +169,6 @@ func (c *Client) handleInbound(msg *Message) {
 	switch msg.Type {
 	case "kanban_task_moved":
 		c.handleKanbanTaskMoved(msg)
-	case "typing":
-		c.hub.Broadcast(msg)
-	case "read":
-		c.hub.Broadcast(msg)
 	case "ping":
 		c.enqueue(&Message{
 			Type:      "pong",
@@ -182,15 +176,6 @@ func (c *Client) handleInbound(msg *Message) {
 			To:        c.UserID,
 			Timestamp: time.Now().Unix(),
 		})
-	case "sync_request":
-		if !c.syncing.CompareAndSwap(false, true) {
-			c.enqueue(&Message{Type: "sync_error", To: c.UserID, Content: map[string]interface{}{"error": "sync already in progress"}, Timestamp: time.Now().Unix()})
-			return
-		}
-		go func() {
-			defer c.syncing.Store(false)
-			c.hub.HandleSyncRequest(c, msg)
-		}()
 	default:
 		c.logger.Warn("unknown websocket message type", zap.String("type", msg.Type))
 	}

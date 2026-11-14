@@ -262,64 +262,6 @@ func (h *E2EEHandler) RejectWebPairingSession(c *gin.Context) {
 	respondJSON(c, http.StatusOK, resp)
 }
 
-// SyncWebPairingHistory godoc
-// @Summary Sync wrapped history keys for web device
-// @Description Uploads re-wrapped message keys so a linked web device can decrypt old history
-// @Tags e2ee
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param pairing_id path string true "Pairing ID"
-// @Param request body service.SyncWebPairingHistoryRequest true "History sync request"
-// @Success 200 {object} service.SyncWebPairingHistoryResponse
-// @Router /e2ee/web/pairing/sessions/{pairing_id}/history [post]
-func (h *E2EEHandler) SyncWebPairingHistory(c *gin.Context) {
-	userID := middleware.MustGetUserID(c)
-
-	pairingID, err := uuid.Parse(c.Param("pairing_id"))
-	if err != nil {
-		h.logger.Warn("invalid web pairing history sync request",
-			zap.Int64("user_id", userID),
-			zap.String("pairing_id", c.Param("pairing_id")),
-		)
-		h.respondError(c, apperrors.BadRequest("invalid pairing id"))
-		return
-	}
-
-	var req service.SyncWebPairingHistoryRequest
-	if err = c.ShouldBindJSON(&req); err != nil {
-		h.logger.Warn("invalid web pairing history sync body",
-			zap.Int64("user_id", userID),
-			zap.String("pairing_id", pairingID.String()),
-			zap.Error(err),
-		)
-		h.respondError(c, apperrors.Validation("invalid request body"))
-		return
-	}
-
-	resp, err := h.service.SyncWebPairingHistory(c.Request.Context(), userID, pairingID, &req)
-	if err != nil {
-		h.logger.Warn("failed to sync web pairing history",
-			zap.Int64("user_id", userID),
-			zap.String("pairing_id", pairingID.String()),
-			zap.String("web_device_id", strings.TrimSpace(req.WebDeviceID)),
-			zap.Int("items_count", len(req.Items)),
-			zap.Error(err),
-		)
-		h.respondError(c, apperrors.ToAppError(err))
-		return
-	}
-
-	h.logger.Info("web pairing history synced",
-		zap.Int64("user_id", userID),
-		zap.String("pairing_id", resp.PairingID.String()),
-		zap.String("web_device_id", resp.WebDeviceID),
-		zap.Int("synced_count", resp.SyncedCount),
-		zap.String("status", resp.Status),
-	)
-	respondJSON(c, http.StatusOK, resp)
-}
-
 // RedeemWebPairingSession godoc
 // @Summary Redeem web pairing session
 // @Description Exchanges a successful pairing session for backend web auth tokens

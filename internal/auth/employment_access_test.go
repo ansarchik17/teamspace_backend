@@ -36,7 +36,7 @@ func TestKeycloakRefreshCannotReturnSessionBeforeAdmissionOrAfterCancellation(t 
 	}))
 	defer server.Close()
 	repo := &admissionLoginRepo{user: &domain.User{ID: 24, IsActive: true}}
-	svc := NewKeycloakService(repo, nil, nil, nil, keycloak.New(server.URL, "test", "web", "secret"), nil, "test")
+	svc := NewKeycloakService(repo, nil, nil, keycloak.New(server.URL, "test", "web", "secret"), nil, "test")
 	for _, allowed := range []bool{false, true, false} {
 		repo.allowed = allowed
 		pair, err := svc.RefreshToken(context.Background(), "synthetic-provider-refresh")

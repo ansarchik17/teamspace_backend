@@ -24,7 +24,7 @@ func (c *allowlistPermissionChecker) Check(_ context.Context, user domain.AgentU
 		domain.AgentIntentCreateReminder, domain.AgentIntentCreateEvent, domain.AgentIntentSetReminder,
 		domain.AgentIntentCreateMeeting, domain.AgentIntentCreateTask, domain.AgentIntentUpdateTask,
 		domain.AgentIntentCreateNote, domain.AgentIntentUpdateNote, domain.AgentIntentDeleteNote,
-		domain.AgentIntentShareDrive, domain.AgentIntentCreateDriveLink, domain.AgentIntentSendBroadcast,
+		domain.AgentIntentShareDrive, domain.AgentIntentCreateDriveLink,
 		domain.AgentIntentGetNotify, domain.AgentIntentOpenScreen, domain.AgentIntentSearch, domain.AgentIntentWebSearch,
 		domain.AgentIntentStartCall, domain.AgentIntentSummarize, domain.AgentIntentFillForm,
 		domain.AgentIntentGetStatus, domain.AgentIntentHelp, domain.AgentIntentGeneralChat:

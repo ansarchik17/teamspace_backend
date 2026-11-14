@@ -119,7 +119,7 @@ func TestCreateUserRollsBackOnlyNewSSOIdentityOnFailure(t *testing.T) {
 			if tc.cancel {
 				repo.cancel = cancel
 			}
-			svc := NewKeycloakService(repo, nil, nil, nil, nil, keycloak.NewAdmin(server.URL, "master", "admin", "admin"), "test")
+			svc := NewKeycloakService(repo, nil, nil, nil, keycloak.NewAdmin(server.URL, "master", "admin", "admin"), "test")
 			company, team := uuid.New(), uuid.New()
 			user, err := svc.CreateUser(ctx, 9, &CreateUserRequest{Username: "test-user", Email: "test@example.invalid", Password: "synthetic-test-password", IIN: "000000000000", OrganizationID: &company, TeamID: &team})
 			if tc.failStage == "" {

@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/west6ide/workspace-backend/internal/apperrors"
 	"os"
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/west6ide/workspace-backend/internal/apperrors"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -1596,61 +1597,6 @@ func (r *UserRepository) GetNeverLoggedIn(ctx context.Context) ([]*domain.User, 
 	}
 
 	return users, nil
-}
-
-// ShareConversation checks if two users share at least one active conversation
-func (r *UserRepository) ShareConversation(ctx context.Context, user1ID, user2ID int64) (bool, error) {
-	query := `
-		SELECT EXISTS (
-			SELECT 1 
-			FROM conversation_participants cp1
-			JOIN conversation_participants cp2 ON cp1.conversation_id = cp2.conversation_id
-			WHERE cp1.user_id = $1 
-			  AND cp2.user_id = $2
-			  AND cp1.left_at IS NULL
-			  AND cp2.left_at IS NULL
-		)
-	`
-	var exists bool
-	err := r.db.QueryRow(ctx, query, user1ID, user2ID).Scan(&exists)
-	if err != nil {
-		r.logger.Error("Failed to check share conversation", zap.Error(err), zap.Int64("user1_id", user1ID), zap.Int64("user2_id", user2ID))
-		return false, fmt.Errorf("check share conversation: %w", err)
-	}
-	return exists, nil
-}
-
-func (r *UserRepository) SharedConversationUserIDs(ctx context.Context, requesterID int64, candidateIDs []int64) (map[int64]bool, error) {
-	if len(candidateIDs) == 0 {
-		return map[int64]bool{}, nil
-	}
-
-	query := `
-		SELECT DISTINCT cp2.user_id
-		FROM conversation_participants cp1
-		JOIN conversation_participants cp2 ON cp1.conversation_id = cp2.conversation_id
-		WHERE cp1.user_id = $1
-		  AND cp2.user_id = ANY($2)
-		  AND cp1.left_at IS NULL
-		  AND cp2.left_at IS NULL
-	`
-
-	rows, err := r.db.Query(ctx, query, requesterID, candidateIDs)
-	if err != nil {
-		return nil, fmt.Errorf("check shared conversations in batch: %w", err)
-	}
-	defer rows.Close()
-
-	result := make(map[int64]bool, len(candidateIDs))
-	for rows.Next() {
-		var userID int64
-		if err := rows.Scan(&userID); err != nil {
-			return nil, err
-		}
-		result[userID] = true
-	}
-
-	return result, rows.Err()
 }
 
 func (r *UserRepository) GetPrimaryMailboxLogin(ctx context.Context, userID int64) (string, error) {

@@ -18,19 +18,12 @@ func (s *OrganizationService) ContactActions(ctx context.Context, actor, target 
 
 func buildContactActions(actor int64, profile *domain.ContactProfile) *domain.ContactActions {
 	actions := &domain.ContactActions{
-		Chat:    domain.ContactChatAction{Label: "Написать сообщение"},
 		Email:   domain.ContactEmailAction{Label: "Отправить email"},
 		Meeting: domain.ContactMeetingAction{Label: "Встреча", AttendeeIDs: []int64{}},
 	}
 	if actor == profile.ID {
-		actions.Chat.DisabledReason = "self_contact"
 		actions.Meeting.DisabledReason = "self_contact"
 	} else {
-		peer := profile.ID
-		actions.Chat.Enabled = true
-		actions.Chat.Method = "POST"
-		actions.Chat.Endpoint = "/api/v1/conversations"
-		actions.Chat.PeerID = &peer
 		actions.Meeting.Enabled = true
 		actions.Meeting.Method = "POST"
 		actions.Meeting.Endpoint = "/api/v1/calendar/events"

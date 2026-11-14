@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"time"
 
 	"github.com/west6ide/workspace-backend/internal/repository"
 	"github.com/west6ide/workspace-backend/internal/websocket"
@@ -70,18 +69,6 @@ func (s *StatusService) broadcastStatus(ctx context.Context, userID int64, statu
 	)
 }
 
-// GetOnlineUsersForConversations returns online status for specific users
-// Used when loading conversation list to show initial online/offline status
-func (s *StatusService) GetOnlineUsersForConversations(ctx context.Context, userIDs []int64) map[int64]bool {
-	result := make(map[int64]bool)
-
-	for _, userID := range userIDs {
-		result[userID] = s.hub.IsUserOnline(userID)
-	}
-
-	return result
-}
-
 // GetInitialOnlineUsers returns the list of currently online interested users
 func (s *StatusService) GetInitialOnlineUsers(ctx context.Context, userID int64) ([]int64, error) {
 	interestedUsers, err := s.statusRepo.GetInterestedUsers(ctx, userID)
@@ -101,23 +88,4 @@ func (s *StatusService) GetInitialOnlineUsers(ctx context.Context, userID int64)
 	}
 
 	return onlineUsers, nil
-}
-
-// SendInitialStatuses sends the list of currently online interested users to the connect user
-// Deprecated: Use GetInitialOnlineUsers and send directly to avoid race conditions
-func (s *StatusService) SendInitialStatuses(ctx context.Context, userID int64) {
-	onlineUsers, err := s.GetInitialOnlineUsers(ctx, userID)
-	if err != nil || len(onlineUsers) == 0 {
-		return
-	}
-
-	// We send a custom event with list of online user IDs
-	msg := &websocket.Message{
-		Type:      "initial_online_list",
-		To:        userID,
-		Content:   onlineUsers,
-		Timestamp: time.Now().Unix(),
-	}
-
-	s.hub.SendToUser(userID, msg)
 }

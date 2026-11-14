@@ -93,10 +93,6 @@ func (s *mailboxSyncRepoStub) GetNeverLoggedIn(_ context.Context) ([]*domain.Use
 	return nil, nil
 }
 
-func (s *mailboxSyncRepoStub) ShareConversation(_ context.Context, _, _ int64) (bool, error) {
-	return false, nil
-}
-
 func (s *mailboxSyncRepoStub) ExportMinistryUsers(_ context.Context, _ int64, _ []int64, _ []int64, _ []int64) ([]domain.MinistryUserExportRow, error) {
 	return nil, nil
 }
@@ -171,7 +167,6 @@ func TestResolveMailOAuthMailboxLoginSyncsUserEmailToProvisionedMailbox(t *testi
 
 	svc := NewKeycloakService(
 		repo,
-		nil,
 		nil,
 		nil,
 		nil,

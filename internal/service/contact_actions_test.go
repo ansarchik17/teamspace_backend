@@ -12,10 +12,6 @@ func TestContactQuickActions(t *testing.T) {
 	work := " work+tag@example.com "
 	profile := &domain.ContactProfile{Contact: domain.Contact{ID: 2, FullName: "Анна Иванова", Email: "login@example.com"}, WorkEmail: &work}
 	actions := buildContactActions(1, profile)
-	require.True(t, actions.Chat.Enabled)
-	require.Equal(t, int64(2), *actions.Chat.PeerID)
-	require.Equal(t, "POST", actions.Chat.Method)
-	require.Equal(t, "/api/v1/conversations", actions.Chat.Endpoint)
 	require.Equal(t, "work+tag@example.com", actions.Email.Address)
 	require.True(t, actions.Email.Enabled)
 	parsed, err := url.Parse(actions.Email.MailtoURL)
@@ -32,9 +28,6 @@ func TestContactQuickActions(t *testing.T) {
 	require.Equal(t, "/api/v1/calendar/events", actions.Meeting.Endpoint)
 	require.Equal(t, "/api/v1/calendar/events/check-availability", actions.Meeting.AvailabilityEndpoint)
 	own := buildContactActions(2, profile)
-	require.False(t, own.Chat.Enabled)
-	require.Nil(t, own.Chat.PeerID)
-	require.Empty(t, own.Chat.Endpoint)
 	require.False(t, own.Meeting.Enabled)
 	require.Empty(t, own.Meeting.AttendeeIDs)
 	require.True(t, own.Email.Enabled)

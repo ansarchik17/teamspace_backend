@@ -1,6 +1,10 @@
 package server
 
 import (
+	"net/netip"
+	"os"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"github.com/west6ide/workspace-backend/internal/auth"
 	"github.com/west6ide/workspace-backend/internal/config"
@@ -9,9 +13,6 @@ import (
 	"github.com/west6ide/workspace-backend/internal/middleware"
 	"github.com/west6ide/workspace-backend/internal/telemetry"
 	"go.uber.org/zap"
-	"net/netip"
-	"os"
-	"strings"
 
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
@@ -27,13 +28,7 @@ func NewRouter(
 	externalAdminViewHandler *handler.ExternalAdminViewHandler,
 	kcAuthMiddleware *middleware.KeycloakAuthMiddleware,
 	externalAdminMiddleware *middleware.ExternalAdminMiddleware,
-	chatHandler *handler.ChatHandler,
-	chatCommandHandler *handler.ChatCommandHandler,
-	groupHandler *handler.GroupHandler,
-	pinnedHandler *handler.PinnedHandler,
-	unifiedHandler *handler.UnifiedHandler,
 	searchHandler *handler.SearchHandler,
-	messageSyncHandler *handler.MessageSyncHandler,
 	fileHandler *handler.FileHandler,
 	authMiddleware *middleware.AuthMiddleware,
 	rateLimiter *middleware.RateLimiter,
@@ -50,7 +45,6 @@ func NewRouter(
 	publicAppHandler *handler.PublicAppHandler,
 	alemHandler *handler.AlemHandler,
 	unifiedAIHandler *handler.UnifiedAIHandler,
-	folderHandler *handler.FolderHandler,
 	reviewHandler *handler.ReviewHandler,
 	notifHandler *handler.NotificationHandler,
 	internalNotificationHandler *handler.InternalNotificationHandler,
@@ -66,10 +60,8 @@ func NewRouter(
 	emailLogHandler *handler.EmailLogHandler,
 	analyticsHandler *handler.AnalyticsHandler,
 	gamificationHandler *handler.GamificationHandler,
-	chatThemeHandler *handler.ChatThemeHandler,
 	personalRecordingHandler *handler.PersonalRecordingHandler,
 	dashboardHandler *handler.DashboardHandler,
-	channelHandler *handler.ChannelHandler,
 	userQRHandler *handler.UserQRHandler,
 	profileSectionHandler *handler.ProfileSectionHandler,
 	metricsCollector *metrics.Collector,
@@ -610,36 +602,12 @@ func NewRouter(
 				protected.POST("/admin/email/test", emailLogHandler.SendTestEmail)
 			}
 
-			// Chat routes
-			if chatCommandHandler != nil {
-				chatCommands := protected.Group("/chat-commands")
-				{
-					chatCommands.GET("", chatCommandHandler.ListCommands)
-					chatCommands.GET("/kanban/context", chatCommandHandler.GetKanbanContext)
-					chatCommands.POST("/execute", chatCommandHandler.Execute)
-				}
-			}
-
-			conversations := protected.Group("/conversations")
-			{
-				conversations.POST("", chatHandler.CreateConversation)
-				conversations.GET("", chatHandler.GetConversations)
-				conversations.POST("/broadcast", chatHandler.BroadcastMessage)
-				conversations.PUT("/:conversation_id/mute", chatHandler.MuteConversation)
-				conversations.POST("/:conversation_id/messages", chatHandler.SendMessage)
-				conversations.GET("/:conversation_id/messages", chatHandler.GetMessages)
-				conversations.GET("/:conversation_id/shared-media", chatHandler.GetSharedMedia)
-				conversations.DELETE("/:conversation_id", chatHandler.DeleteConversation)      // Hide conversation
-				conversations.POST("/:conversation_id/unhide", chatHandler.UnhideConversation) // Restore hidden conversation
-			}
-
 			calls := protected.Group("/calls")
 			{
 				calls.GET("/telemetry", liveKitHandler.GetTelemetry)
 				calls.GET("/debug/livekit", liveKitHandler.GetLiveKitDebug)
 				calls.POST("/start", liveKitHandler.StartCall)
 				calls.POST("/assistant/start", liveKitHandler.StartAssistantCall)
-				calls.POST("/group/start", liveKitHandler.StartGroupCall)
 				calls.POST("/accept", liveKitHandler.AcceptCall)
 				calls.POST("/join", liveKitHandler.JoinRoom)
 				calls.POST("/kick", liveKitHandler.KickParticipant)
@@ -698,66 +666,6 @@ func NewRouter(
 				reviews.GET("/my-stats", reviewHandler.GetMyStats)
 			}
 
-			protected.POST("/chats/share", chatHandler.ShareItem)
-
-			if chatThemeHandler != nil {
-				themes := protected.Group("/chat-themes")
-				{
-					themes.POST("", chatThemeHandler.SetTheme)
-					themes.GET("", chatThemeHandler.GetTheme)
-					themes.DELETE("", chatThemeHandler.DeleteTheme)
-				}
-			}
-
-			// Message routes
-			messages := protected.Group("/messages")
-			{
-				if messageSyncHandler != nil {
-					messages.POST("/sync", messageSyncHandler.SyncMessages)
-					messages.PUT("/sync/position", messageSyncHandler.UpdateSyncPosition)
-					messages.GET("/sync/status", messageSyncHandler.GetSyncStatus)
-				}
-				messages.GET("/moderation/rules", chatHandler.GetMessageModerationRules)
-				messages.DELETE("", chatHandler.DeleteMessages) // Bulk delete
-				messages.PUT("/:message_id", chatHandler.EditMessage)
-				messages.DELETE("/:message_id", chatHandler.DeleteMessage)
-				messages.POST("/:message_id/read", chatHandler.MarkAsRead)
-				messages.POST("/:message_id/delivered", chatHandler.MarkAsDelivered)
-				messages.GET("/:message_id/viewers", chatHandler.GetMessageViewers)
-				messages.POST("/forward", chatHandler.ForwardMessages)
-				messages.POST("/:message_id/reactions", chatHandler.AddReaction)
-				messages.DELETE("/:message_id/reactions/:reaction", chatHandler.RemoveReaction)
-				messages.GET("/:message_id/thread", chatHandler.GetMessageThread)
-			}
-
-			// Group routes
-			groups := protected.Group("/groups")
-			{
-				groups.POST("", groupHandler.CreateGroup)
-				groups.GET("", groupHandler.GetUserGroups)
-				groups.GET("/:group_id", groupHandler.GetGroup)
-				groups.PUT("/:group_id", groupHandler.UpdateGroup)
-				groups.PUT("/:group_id/avatar", groupHandler.UpdateGroupAvatar)
-				groups.POST("/:group_id/members", groupHandler.AddMember)
-				groups.DELETE("/:group_id/members/:user_id", groupHandler.RemoveMember)
-				groups.POST("/:group_id/leave", groupHandler.LeaveGroup)
-				groups.PUT("/:group_id/members/:user_id/role", groupHandler.UpdateMemberRole)
-				groups.PUT("/:group_id/mute", groupHandler.MuteGroup)
-				groups.POST("/:group_id/messages", groupHandler.SendMessage)
-				groups.GET("/:group_id/messages", groupHandler.GetMessages)
-				groups.GET("/:group_id/shared-media", groupHandler.GetSharedMedia)
-				groups.POST("/:group_id/events", groupHandler.CreateGroupEvent)
-				groups.GET("/:group_id/events", groupHandler.GetGroupUpcomingEvents)
-				groups.DELETE("/:group_id", groupHandler.DeleteGroup)      // Full delete (owner only)
-				groups.DELETE("/:group_id/hide", groupHandler.HideGroup)   // Hide group (any member)
-				groups.POST("/:group_id/unhide", groupHandler.UnhideGroup) // Restore hidden group
-			}
-
-			// Unified routes
-			if unifiedHandler != nil {
-				protected.GET("/chats/unified", unifiedHandler.GetUnifiedChats)
-			}
-
 			e2ee := protected.Group("/e2ee")
 			{
 				e2ee.POST("/keys", e2eeHandler.UploadKey)
@@ -773,19 +681,8 @@ func NewRouter(
 				e2ee.POST("/web/pairing/sessions/:pairing_id/preview", e2eeHandler.PreviewWebPairingSession)
 				e2ee.POST("/web/pairing/sessions/:pairing_id/approve", e2eeHandler.ApproveWebPairingSession)
 				e2ee.POST("/web/pairing/sessions/:pairing_id/reject", e2eeHandler.RejectWebPairingSession)
-				e2ee.POST("/web/pairing/sessions/:pairing_id/history", e2eeHandler.SyncWebPairingHistory)
 				e2ee.GET("/devices", e2eeHandler.ListLinkedDevices)
 				e2ee.DELETE("/devices/:device_id", e2eeHandler.RevokeLinkedDevice)
-			}
-
-			// Pinned routes
-			if pinnedHandler != nil {
-				protected.POST("/chats/pin", pinnedHandler.PinChat)
-				protected.POST("/chats/unpin", pinnedHandler.UnpinChat)
-				protected.GET("/chats/pinned", pinnedHandler.GetPinnedChats)
-				protected.POST("/messages/pin", pinnedHandler.PinMessage)
-				protected.POST("/messages/:message_id/unpin", pinnedHandler.UnpinMessage)
-				protected.GET("/messages/pinned", pinnedHandler.GetPinnedMessages)
 			}
 
 			// Search routes
@@ -793,15 +690,9 @@ func NewRouter(
 				search := protected.Group("/search")
 				{
 					search.GET("/users", searchHandler.SearchUsers)
-					search.GET("/messages", searchHandler.SearchMessages)
-					search.GET("/messages/global", searchHandler.SearchMessagesGlobal)
-					search.GET("/attachments", searchHandler.SearchAttachments)
-					search.GET("/identical", searchHandler.FindIdenticalMessages)
 					search.GET("/all", searchHandler.SearchAll)
 					search.GET("", searchHandler.SearchGlobal)
 				}
-				// Chat attachment stats
-				protected.GET("/chats/:chat_id/attachments/stats", searchHandler.GetChatAttachmentStats)
 			}
 
 			if analyticsHandler != nil {
@@ -1193,20 +1084,6 @@ func NewRouter(
 			}
 		}
 
-		// Folder routes
-		if folderHandler != nil {
-			folders := protected.Group("/folders")
-			{
-				folders.POST("", folderHandler.CreateFolder)
-				folders.GET("", folderHandler.GetFolders)
-				folders.GET("/:id", folderHandler.GetFolder)
-				folders.PUT("/:id", folderHandler.UpdateFolder)
-				folders.DELETE("/:id", folderHandler.DeleteFolder)
-				folders.POST("/:id/chats", folderHandler.AddChat)
-				folders.DELETE("/:id/chats/:chat_id", folderHandler.RemoveChat)
-			}
-		}
-
 		// Notebook AI routes
 		if notebookHandler != nil {
 			nb := protected.Group("/notebook")
@@ -1295,51 +1172,6 @@ func NewRouter(
 				notes.GET("/:id/audio/:attachmentId", noteHandler.GetAudioAttachment)
 				notes.GET("/:id/audio/:attachmentId/stream", noteHandler.StreamAudioAttachment)
 				notes.DELETE("/:id/audio/:attachmentId", noteHandler.DeleteAudioAttachment)
-			}
-		}
-
-		if channelHandler != nil {
-			channels := protected.Group("/channels")
-			{
-				channels.POST("", channelHandler.CreateChannel)
-				channels.GET("", channelHandler.GetMyChannels)
-				channels.GET("/search", channelHandler.SearchChannels)
-				channels.GET("/username/:username", channelHandler.GetChannelByUsername)
-				channels.GET("/:channel_id", channelHandler.GetChannel)
-				channels.PUT("/:channel_id", channelHandler.UpdateChannel)
-				channels.DELETE("/:channel_id", channelHandler.DeleteChannel)
-				channels.PUT("/:channel_id/avatar", channelHandler.UpdateAvatar)
-
-				// Subscriptions
-				channels.POST("/:channel_id/subscribe", channelHandler.Subscribe)
-				channels.DELETE("/:channel_id/subscribe", channelHandler.Unsubscribe)
-				channels.PUT("/:channel_id/mute", channelHandler.MuteChannel)
-
-				// Member management
-				channels.GET("/:channel_id/members", channelHandler.GetMembers)
-				channels.GET("/:channel_id/admins", channelHandler.GetAdmins)
-				channels.POST("/:channel_id/members", channelHandler.AddMembers)
-				channels.PUT("/:channel_id/members/:user_id/role", channelHandler.UpdateMemberRole)
-				channels.DELETE("/:channel_id/members/:user_id", channelHandler.KickMember)
-
-				// Posts
-				channels.POST("/:channel_id/posts", channelHandler.CreatePost)
-				channels.GET("/:channel_id/posts", channelHandler.GetPosts)
-				channels.GET("/:channel_id/posts/pinned", channelHandler.GetPinnedPosts)
-			}
-
-			// Per-post operations
-			posts := protected.Group("/channels/posts")
-			{
-				posts.GET("/:post_id", channelHandler.GetPost)
-				posts.GET("/:post_id/thread", channelHandler.GetPostThread)
-				posts.PUT("/:post_id", channelHandler.EditPost)
-				posts.DELETE("/:post_id", channelHandler.DeletePost)
-				posts.POST("/:post_id/view", channelHandler.MarkViewed)
-				posts.GET("/:post_id/viewers", channelHandler.GetPostViewers)
-				posts.POST("/:post_id/pin", channelHandler.PinPost)
-				posts.POST("/:post_id/reactions", channelHandler.AddReaction)
-				posts.DELETE("/:post_id/reactions/:reaction", channelHandler.RemoveReaction)
 			}
 		}
 

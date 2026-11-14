@@ -72,14 +72,8 @@ func (r *e2eeHandlerMockRepo) ApproveWebPairingSession(_ context.Context, _ uuid
 func (r *e2eeHandlerMockRepo) RejectWebPairingSession(_ context.Context, _ uuid.UUID, _ int64) (*domain.WebPairingSession, error) {
 	return nil, nil
 }
-func (r *e2eeHandlerMockRepo) MarkWebPairingHistorySynced(_ context.Context, _ uuid.UUID) error {
-	return nil
-}
 func (r *e2eeHandlerMockRepo) RedeemWebPairingSession(_ context.Context, _ uuid.UUID, _ string) (*domain.WebPairingSession, error) {
 	return nil, nil
-}
-func (r *e2eeHandlerMockRepo) AppendHistoryKeysForDevice(_ context.Context, _ int64, _ uuid.UUID, _ string, _ []domain.WebHistorySyncItem) (int, error) {
-	return 0, nil
 }
 func (r *e2eeHandlerMockRepo) UpdateLinkedDeviceAccessMetadata(_ context.Context, _ int64, _ string, _ *domain.ClientMetadata) error {
 	return nil

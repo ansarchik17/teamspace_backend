@@ -23,11 +23,6 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
-type ChatService interface {
-	CreateOrGetConversation(ctx context.Context, user1ID, user2ID int64) (*domain.Conversation, error)
-	BroadcastUserStatus(ctx context.Context, userID int64, status string)
-}
-
 type ReviewRepository interface {
 	GetMonthlyStats(ctx context.Context, userID int64) (*domain.UserReviewStats, error)
 	HasReviewedThisMonth(ctx context.Context, reviewerID, targetID int64) (bool, error)
@@ -59,7 +54,6 @@ type UserRepository interface {
 	UpdateStatus(ctx context.Context, userID int64, status string) error
 	GetByKeycloakIDs(ctx context.Context, kcIDs []string) ([]*domain.User, error)
 	GetNeverLoggedIn(ctx context.Context) ([]*domain.User, error)
-	ShareConversation(ctx context.Context, user1ID, user2ID int64) (bool, error)
 	ExportMinistryUsers(ctx context.Context, ministryID int64, excludeStateBodyIDs []int64, excludeDepartmentIDs []int64, excludeDivisionIDs []int64) ([]domain.MinistryUserExportRow, error)
 	GetMinistryName(ctx context.Context, ministryID int64) (string, error)
 	SoftDelete(ctx context.Context, id int64) error
@@ -111,10 +105,10 @@ type Service struct {
 	egovProfileRepo EgovProfileRepository
 	tokenManager    *TokenManager
 
-	hrPersonProvider                         HRPersonProvider
-	cache                                    *appservice.AICache
-	loginLogRepo                             *repository.LoginLogRepository
-	chatService                              ChatService
+	hrPersonProvider HRPersonProvider
+	cache            *appservice.AICache
+	loginLogRepo     *repository.LoginLogRepository
+
 	keyBackupService                         KeyBackupService
 	kc                                       *keycloak.Client
 	kcClients                                map[string]*keycloak.Client
@@ -216,13 +210,11 @@ func WithMailboxProvisioner(mailboxProvisioner MailboxProvisioner) ServiceOption
 func NewKeycloakService(userRepo UserRepository,
 	reviewRepo ReviewRepository,
 	loginLogRepo *repository.LoginLogRepository,
-	chatService ChatService,
 	kc *keycloak.Client, kcAdmin *keycloak.AdminClient, realm string, opts ...ServiceOption) *Service {
 	s := &Service{
 		userRepo:                                 userRepo,
 		reviewRepo:                               reviewRepo,
 		loginLogRepo:                             loginLogRepo,
-		chatService:                              chatService,
 		kc:                                       kc,
 		kcAdmin:                                  kcAdmin,
 		realm:                                    realm,
@@ -681,10 +673,6 @@ func (s *Service) Login(ctx context.Context, req *LoginRequest) (*TokenPair, err
 				}
 				return nil, apperrors.Forbidden("device is blocked")
 			}
-		}
-
-		if u.ID != domain.SupportUserID {
-			_, _ = s.chatService.CreateOrGetConversation(ctx, u.ID, domain.SupportUserID)
 		}
 
 		_ = s.userRepo.UpdateLastLogin(ctx, u.ID, time.Now())
@@ -2652,8 +2640,6 @@ func (s *Service) ChangeAvailabilityStatus(ctx context.Context, userID int64, st
 	if err := s.userRepo.UpdateStatus(ctx, userID, status); err != nil {
 		return apperrors.InternalWithErr("Failed to update status", err)
 	}
-
-	s.chatService.BroadcastUserStatus(ctx, userID, status)
 
 	return nil
 }

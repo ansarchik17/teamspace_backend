@@ -625,29 +625,6 @@ func (s *NotificationService) MarkAllAsRead(ctx context.Context, userID int64) e
 	return s.notifRepo.MarkAllAsRead(ctx, userID)
 }
 
-func (s *NotificationService) SendChatPushOnly(ctx context.Context, userID int64, title, body string, meta map[string]string) {
-	if s.fcmClient == nil {
-		s.logger.Warn("FCM client not initialized, cannot send push",
-			zap.Int64("user_id", userID),
-		)
-		return
-	}
-
-	tokens, err := s.deviceRepo.GetUserTokens(ctx, userID)
-	if err != nil {
-		s.logger.Error("Failed to get user tokens", zap.Error(err), zap.Int64("user_id", userID))
-		return
-	}
-	if len(tokens) == 0 {
-		s.logger.Warn("No FCM tokens for user, skipping push", zap.Int64("user_id", userID))
-		return
-	}
-
-	if err := s.SendPushNotification(userID, title, body, meta); err != nil {
-		s.logger.Error("SendPushNotification failed", zap.Error(err), zap.Int64("user_id", userID))
-	}
-}
-
 func normalizeNotificationText(notificationType, title, content string, meta map[string]string) (string, string) {
 	title = strings.TrimSpace(title)
 	content = strings.TrimSpace(content)

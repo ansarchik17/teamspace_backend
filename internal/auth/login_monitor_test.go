@@ -97,9 +97,6 @@ func (s *loginMonitorTestUserRepo) GetNeverLoggedIn(_ context.Context) ([]*domai
 	return nil, nil
 }
 
-func (s *loginMonitorTestUserRepo) ShareConversation(_ context.Context, _, _ int64) (bool, error) {
-	return false, nil
-}
 func (s *loginMonitorTestUserRepo) ExportMinistryUsers(_ context.Context, _ int64, _ []int64, _ []int64, _ []int64) ([]domain.MinistryUserExportRow, error) {
 	return nil, nil
 }
@@ -125,14 +122,6 @@ func (loginMonitorTestReviewRepo) GetMonthlyStats(_ context.Context, _ int64) (*
 func (loginMonitorTestReviewRepo) HasReviewedThisMonth(_ context.Context, _, _ int64) (bool, error) {
 	return false, nil
 }
-
-type loginMonitorTestChatService struct{}
-
-func (loginMonitorTestChatService) CreateOrGetConversation(_ context.Context, _, _ int64) (*domain.Conversation, error) {
-	return nil, nil
-}
-
-func (loginMonitorTestChatService) BroadcastUserStatus(_ context.Context, _ int64, _ string) {}
 
 type loginMonitorStub struct {
 	blocked bool
@@ -198,7 +187,6 @@ func TestLoginBlockedByMonitor(t *testing.T) {
 		&loginMonitorTestUserRepo{user: user},
 		loginMonitorTestReviewRepo{},
 		nil,
-		loginMonitorTestChatService{},
 		keycloak.New(parsedURL.Scheme+"://"+parsedURL.Host, "test-realm", "client-id", "client-secret"),
 		nil,
 		"test-realm",

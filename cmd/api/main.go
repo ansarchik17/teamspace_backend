@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/west6ide/workspace-backend/internal/apperrors"
 	"os"
 	"os/signal"
 	"strings"
@@ -12,7 +11,8 @@ import (
 
 	"database/sql"
 
-	"github.com/google/uuid"
+	"github.com/west6ide/workspace-backend/internal/apperrors"
+
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pressly/goose/v3"
 	"github.com/redis/go-redis/v9"
@@ -156,12 +156,6 @@ func main() {
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(db, logger)
 	userHRProfileRepo := repository.NewUserHRProfileRepository(db, logger)
-	chatRepo := repository.NewChatRepository(db, redisClient, logger)
-	messageRepo := repository.NewMessageRepository(db, logger)
-	messageSyncRepo := repository.NewMessageSyncRepository(db, logger)
-	messageSyncService := service.NewMessageSyncService(messageSyncRepo, logger)
-	groupRepo := repository.NewGroupRepository(db, logger)
-	pinnedRepo := repository.NewPinnedRepository(db, logger)
 	deviceRepo := repository.NewDeviceRepository(db, logger)
 	boardRepo := repository.NewBoardRepository(db, logger)
 	taskRepo := repository.NewTaskRepository(db, logger)
@@ -172,14 +166,12 @@ func main() {
 	publicAppRepo := repository.NewPublicAppRepository(db, logger)
 	aiRepo := repository.NewAIRepository(db, logger)
 	unifiedAIRepo := repository.NewUnifiedAIRepository(db, logger)
-	folderRepo := repository.NewFolderRepository(db, logger)
 	reviewRepo := repository.NewReviewRepository(db, logger)
 	notifRepo := repository.NewNotificationRepository(db, logger)
 	callRepo := repository.NewCallHistoryRepository(db, logger)
 	recordingRepo := repository.NewCallRecordingRepository(db, logger)
 	personalRecordingRepo := repository.NewPersonalCallRecordingRepository(db, logger)
 	statusRepo := repository.NewStatusRepository(db, logger)
-	reactionRepo := repository.NewReactionRepository(db, logger)
 	e2eeRepo := repository.NewE2EERepository(db, logger)
 	notebookRepo := repository.NewNotebookRepository(db, logger)
 	noteRepo := repository.NewNoteRepository(db, logger)
@@ -189,9 +181,7 @@ func main() {
 	emailMappingRepo := repository.NewEmailMappingRepository(db, logger)
 	loginLogRepo := repository.NewLoginLogRepository(db, logger)
 	gamificationRepo := repository.NewGamificationRepository(db)
-	chatThemeRepo := repository.NewChatThemeRepository(db, logger)
 	dashboardRepo := repository.NewDashboardRepository(db, logger)
-	channelRepo := repository.NewChannelRepository(db, logger)
 	userQRRepo := repository.NewUserQRRepository(db, logger)
 	profileSectionRepo := repository.NewProfileSectionRepository(db, logger)
 	agentRepo := repository.NewAgentRepository(db, logger)
@@ -213,26 +203,9 @@ func main() {
 
 	// Initialize WebSocket hub
 	wsHub := websocket.NewHub(logger, userRepo, callTelemetry)
-	wsHub.SyncHandler = messageSyncService
 	metricsCollector := metrics.NewCollector(cfg.App.Name, cfg.App.Version, wsHub, callTelemetry)
 	if cfg.Metrics.Enabled {
 		metrics.DefaultAIAccounting().StartAIDatabaseSampler(ctx, db, time.Minute, cfg.AIReconciliation.StaleAfter)
-	}
-	wsHub.ParticipantResolver = func(ctx context.Context, conversationID uuid.UUID) ([]int64, error) {
-		// 1. Try to get as group members
-		// Note from context: conversation_id in messages often equals group_id for groups.
-		members, err := groupRepo.GetGroupMembers(ctx, conversationID)
-		if err == nil && len(members) > 0 {
-			return members, nil
-		}
-
-		// 2. If no group members found, try partial/private chat logic
-		// We might need a method from chatRepo.
-		// For now, let's try getting it from chatRepo if available
-		// or implementing a simple SQL lookup here? No, stick to repo.
-		// assumption: chatRepo has GetParticipants or similar.
-		// If not, we will add it.
-		return chatRepo.GetConversationParticipants(ctx, conversationID)
 	}
 
 	pinCryptoKey := os.Getenv("PIN_CRYPTO_KEY")
@@ -315,9 +288,6 @@ func main() {
 	notificationService := service.NewNotificationService(deviceRepo, notifRepo, callRepo, userRepo, emailService, wsHub, cfg, logger)
 	internalNotificationService := service.NewInternalNotificationService(userRepo, notifRepo, notificationService, logger)
 	statusService := service.NewStatusService(statusRepo, wsHub, logger)
-	chatService := service.NewChatService(chatRepo, messageRepo, groupRepo, userRepo, pinnedRepo, reactionRepo, wsHub, notificationService, gamificationService, eventPublisher, logger)
-	pinnedService := service.NewPinnedService(pinnedRepo, chatRepo, groupRepo, channelRepo, wsHub, logger)
-	unifiedService := service.NewUnifiedService(chatRepo, groupRepo, pinnedRepo, unifiedAIRepo, channelRepo, wsHub, logger)
 
 	e2eeService := service.NewE2EEService(e2eeRepo, logger)
 	telegramGuardClient := telegramguard.New(cfg.TelegramGuard.BaseURL, cfg.TelegramGuard.APIKey, cfg.TelegramGuard.Timeout, logger)
@@ -352,7 +322,6 @@ func main() {
 		userRepo,
 		reviewRepo,
 		loginLogRepo,
-		chatService,
 		kcClient,
 		kcAdminClient,
 		cfg.Keycloak.Realm,
@@ -476,10 +445,9 @@ func main() {
 		pubService.SetFileService(fileService)
 	}
 
-	// Initialize groupService (requires fileService for avatar upload)
+	// Initialize file-backed workspace services
 	go pubService.RunScheduledPublications(ctx)
 	go pubService.RunPublicationObjectCleanup(ctx)
-	groupService := service.NewGroupService(groupRepo, calendarRepo, messageRepo, pinnedRepo, reactionRepo, calendarService, userRepo, fileService, wsHub, notificationService, gamificationService, eventPublisher, logger)
 
 	kanbanService := service.NewKanbanService(boardRepo, taskRepo, userRepo, driveRepo, notificationService, fileService, gamificationService, eventPublisher, logger)
 	odoIssuer := cfg.Keycloak.Issuer
@@ -503,7 +471,6 @@ func main() {
 	}
 	internalNotificationService.SetDriveService(driveService)
 	internalDriveImportService := service.NewInternalDriveImportService(userRepo, driveService)
-	chatCommandService := service.NewChatCommandService(kanbanService, calendarService, driveService, chatService, groupService, logger)
 
 	deviceObservabilityService := service.NewDeviceObservabilityService(
 		deviceRepo,
@@ -591,13 +558,12 @@ func main() {
 	}
 	unifiedAIService := service.NewUnifiedAIService(cfg, unifiedAIRepo, fileService, logger)
 	unifiedAIService.SetPaidAccounting(paidCallerService, userRepo)
-	folderService := service.NewFolderService(folderRepo, chatRepo, groupRepo, logger)
-	reviewService := service.NewReviewService(reviewRepo, chatRepo, taskRepo, calendarRepo, gamificationService, logger)
+	reviewService := service.NewReviewService(reviewRepo, taskRepo, calendarRepo, gamificationService, logger)
 	notebookService := service.NewNotebookService(notebookRepo, logger, driveRepo)
 	twoSlidesService := service.NewTwoSlidesService(cfg.TwoSlides, logger)
 	noteService := service.NewNoteService(noteRepo, fileService, logger, service.WithNoteCache(aiCache))
 	go noteService.RunObjectCleanup(ctx)
-	searchService := service.NewSearchService(userRepo, messageRepo, noteService, logger)
+	searchService := service.NewSearchService(userRepo, noteService, logger)
 	driveSearchService := service.NewDriveSearchService(
 		cfg.DriveSearch,
 		logger,
@@ -610,10 +576,8 @@ func main() {
 		driveService.SetDriveSearchService(driveSearchService)
 	}
 	emailLogService := service.NewEmailLogService(emailLogRepo, emailMappingRepo, userRepo, emailService, notificationService, logger)
-	chatThemeService := service.NewChatThemeService(chatThemeRepo, logger)
 	dashboardService := service.NewDashboardService(dashboardRepo, logger)
-	channelService := service.NewChannelService(channelRepo, userRepo, pinnedRepo, wsHub, notificationService, logger)
-	userQRService := service.NewUserQRService(userQRRepo, userRepo, chatRepo, logger)
+	userQRService := service.NewUserQRService(userQRRepo, userRepo, logger)
 	profileSectionService := service.NewProfileSectionService(profileSectionRepo, userRepo, fileService, logger)
 
 	aiAssistantService := service.NewAIAssistantService(calendarService, kanbanService, userRepo, aiCache, logger)
@@ -634,14 +598,8 @@ func main() {
 	externalAdminViewHandler := handler.NewExternalAdminViewHandler(logger)
 	authHandler.SetSessionTerminator(wsHub)
 	authHandler.SetPushDeviceManager(notificationService)
-	chatHandler := handler.NewChatHandler(chatService, groupService, unifiedAIService, kanbanService, calendarService, noteService, logger)
-	chatCommandHandler := handler.NewChatCommandHandler(chatCommandService, logger)
-	groupHandler := handler.NewGroupHandler(groupService, noteService, logger)
 
-	pinnedHandler := handler.NewPinnedHandler(pinnedService, logger)
-	unifiedHandler := handler.NewUnifiedHandler(unifiedService, logger)
 	searchHandler := handler.NewSearchHandler(searchService, kanbanService, calendarService, driveService, logger)
-	messageSyncHandler := handler.NewMessageSyncHandler(messageSyncService, logger)
 	wsHandler := handler.NewWebSocketHandler(wsHub, statusService, logger)
 	whiteboardHandler := handler.NewWhiteboardHandler(whiteboardService, whiteboardManager, logger)
 
@@ -662,12 +620,11 @@ func main() {
 	alemHandler.SetWorkspaceAIProvider(workspaceAIProvider)
 	alemHandler.SetDocumentService(aiDocumentService)
 	unifiedAIHandler := handler.NewUnifiedAIHandler(unifiedAIService, logger)
-	folderHandler := handler.NewFolderHandler(folderService, logger)
 	reviewHandler := handler.NewReviewHandler(reviewService, logger)
 	notifHandler := handler.NewNotificationHandler(notificationService, liveKitService, logger)
 	internalNotificationHandler := handler.NewInternalNotificationHandler(internalNotificationService, logger)
 	internalDriveImportHandler := handler.NewInternalDriveImportHandler(internalDriveImportService, logger)
-	liveKitHandler := handler.NewLiveKitHandler(liveKitService, notificationService, groupService, userRepo, callRepo, recordingRepo, personalRecordingRepo, fileService, callTelemetry, logger)
+	liveKitHandler := handler.NewLiveKitHandler(liveKitService, notificationService, userRepo, callRepo, recordingRepo, personalRecordingRepo, fileService, callTelemetry, logger)
 	personalRecordingHandler := handler.NewPersonalRecordingHandler(liveKitService, personalRecordingRepo, callRepo, fileService, wsHub, logger)
 	contentExtractionHandler := handler.NewContentExtractionHandler(contentExtractionService, logger)
 	notebookResearch := service.NewNotebookResearchService(notebookService, driveSearchService, cfg.Alem, logger)
@@ -680,9 +637,7 @@ func main() {
 	emailLogHandler := handler.NewEmailLogHandler(emailLogService, logger)
 	analyticsHandler := handler.NewAnalyticsHandler(loginLogRepo, logger)
 	gamificationHandler := handler.NewGamificationHandler(gamificationService)
-	chatThemeHandler := handler.NewChatThemeHandler(chatThemeService, logger)
 	dashboardHandler := handler.NewDashboardHandler(dashboardService)
-	channelHandler := handler.NewChannelHandler(channelService, logger)
 	userQRHandler := handler.NewUserQRHandler(userQRService, logger)
 	profileSectionHandler := handler.NewProfileSectionHandler(profileSectionService, logger)
 	aiAssistantHandler := handler.NewAIAssistantHandler(aiAssistantService, logger)
@@ -747,7 +702,7 @@ func main() {
 		driveHandler = handler.NewDriveHandler(driveService, driveSearchService, cfg.App.PublicURL, cfg.JWT.Secret, logger)
 	}
 
-	smartAgentService := service.NewSmartAgentService(cfg, logger, userRepo, calendarService, kanbanService, chatService, meetingService, redisClient, boardRepo)
+	smartAgentService := service.NewSmartAgentService(cfg, logger, userRepo, calendarService, kanbanService, meetingService, redisClient, boardRepo)
 	smartAgentService.SetPaidAccounting(paidCallerService, userRepo)
 	smartAgentService.SetFileSearch(driveSearchService)
 	if cfg.Agent.Enabled {
@@ -857,12 +812,11 @@ func main() {
 	// Setup router
 	router := server.NewRouter(
 		cfg, logger,
-		authHandler, externalAdminHandler, externalAdminViewHandler, kcAuthMiddleware, externalAdminMiddleware, chatHandler, chatCommandHandler, groupHandler,
-		pinnedHandler, unifiedHandler, searchHandler, messageSyncHandler, fileHandler,
+		authHandler, externalAdminHandler, externalAdminViewHandler, kcAuthMiddleware, externalAdminMiddleware, searchHandler, fileHandler,
 		authMiddleware, rateLimiter, agentRateLimiter, tokenManager,
 		wsHandler, whiteboardHandler, deviceHandler, meetingHandler,
 		kanbanHandler, calendarHandler, pinAuthHandler, driveHandler, publicAppHandler,
-		alemHandler, unifiedAIHandler, folderHandler, reviewHandler, notifHandler, internalNotificationHandler, internalDriveImportHandler, smartAgentHandler, liveKitHandler, e2eeHandler, contentExtractionHandler, notebookHandler, noteHandler, googleCalendarHandler, appleCalendarHandler, emailLogHandler, analyticsHandler, gamificationHandler, chatThemeHandler, personalRecordingHandler, dashboardHandler, channelHandler, userQRHandler, profileSectionHandler, metricsCollector,
+		alemHandler, unifiedAIHandler, reviewHandler, notifHandler, internalNotificationHandler, internalDriveImportHandler, smartAgentHandler, liveKitHandler, e2eeHandler, contentExtractionHandler, notebookHandler, noteHandler, googleCalendarHandler, appleCalendarHandler, emailLogHandler, analyticsHandler, gamificationHandler, personalRecordingHandler, dashboardHandler, userQRHandler, profileSectionHandler, metricsCollector,
 		idpHandler,
 		aiAssistantHandler,
 		deviceObservabilityHandler,
@@ -942,11 +896,6 @@ func main() {
 	})
 	g.Go(func() error {
 		kanbanService.StartDeadlineWorker(gCtx)
-		return nil
-	})
-
-	g.Go(func() error {
-		chatService.StartEphemeralCleaner(gCtx)
 		return nil
 	})
 

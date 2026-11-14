@@ -1,6 +1,6 @@
 # Messenger API
 
-Go backend for messenger, drive, kanban, calendar and notebook features. This branch also includes a full Notes module with folders, pin/unpin, checklist notes, soft delete, sync and file/photo attachments.
+Go backend for a corporate workspace: people, drive, kanban, calendar and notebook features. This branch also includes a full Notes module with folders, pin/unpin, checklist notes, soft delete, sync and file/photo attachments.
 
 ## Run
 
@@ -36,6 +36,19 @@ npm run dev
 
 Frontend: **http://localhost:5173/web/**. API: **http://localhost:8080**.
 Проверка API: `/health`, `/ready`; Swagger: `/swagger/index.html`.
+
+Встроенный мессенджер удалён: API личных чатов, групп, каналов, сообщений,
+реакций, закреплений, чатовых папок и синхронизации истории больше не доступны.
+AI не предлагает отправку сообщений, вход не создаёт чат поддержки. Общий поиск
+продолжает искать сотрудников, задачи, встречи, документы и заметки; поле
+`messages` в его ответе возвращается пустым массивом для совместимости клиентов.
+Уведомления, звонки, календарь, явный доступ к заметкам и регистрация устройств
+сохранены. Онлайн-статусы доступны активным коллегам той же компании.
+
+Исторические миграции и таблицы переписки сохранены. Обновление удаляет код и
+API мессенджера, не удаляя данные из существующей базы. Старые связи событий с
+групповыми календарями по-прежнему доступны из календаря.
+
 Frontend проксирует `/api` и WebSocket на `127.0.0.1:8080`.
 
 | Сервис | Локальный адрес |
@@ -158,7 +171,7 @@ SMTP_SKIP_TLS_VERIFY=false
 Optional recipient override for Mailcow users:
 ```bash
 MAIL_DOMAIN=yourdomain.com
-MAIL_NOTIFICATION_TYPES=new_message,incoming_call,system,security,calendar_invite,calendar_event,web_login
+MAIL_NOTIFICATION_TYPES=incoming_call,system,security,calendar_invite,calendar_event,web_login
 ```
 
 Recipient resolution rules:

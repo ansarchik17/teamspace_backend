@@ -88,19 +88,6 @@ type RejectWebPairingRequest struct {
 	QRToken string `json:"qr_token"`
 }
 
-type SyncWebPairingHistoryRequest struct {
-	WebDeviceID string                      `json:"web_device_id"`
-	Items       []domain.WebHistorySyncItem `json:"items"`
-}
-
-type SyncWebPairingHistoryResponse struct {
-	PairingID   uuid.UUID  `json:"pairing_id"`
-	WebDeviceID string     `json:"web_device_id"`
-	Status      string     `json:"status"`
-	SyncedCount int        `json:"synced_count"`
-	SyncedAt    *time.Time `json:"synced_at,omitempty"`
-}
-
 type RedeemWebPairingSessionRequest struct {
 	SessionToken string `json:"session_token"`
 }
@@ -368,30 +355,6 @@ func (s *E2EEService) RejectWebPairingSession(ctx context.Context, userID int64,
 		ApprovedAt:  rejected.ApprovedAt,
 		SyncedAt:    rejected.SyncedAt,
 		RedeemedAt:  rejected.RedeemedAt,
-	}, nil
-}
-
-func (s *E2EEService) SyncWebPairingHistory(ctx context.Context, userID int64, pairingID uuid.UUID, req *SyncWebPairingHistoryRequest) (*SyncWebPairingHistoryResponse, error) {
-	if req == nil {
-		return nil, apperrors.Validation("request body is required")
-	}
-
-	webDeviceID := strings.TrimSpace(req.WebDeviceID)
-	if webDeviceID == "" {
-		return nil, apperrors.Validation("web_device_id is required")
-	}
-
-	syncedCount, err := s.repo.AppendHistoryKeysForDevice(ctx, userID, pairingID, webDeviceID, req.Items)
-	if err != nil {
-		return nil, mapWebPairingRepoError(err, "history")
-	}
-
-	return &SyncWebPairingHistoryResponse{
-		PairingID:   pairingID,
-		WebDeviceID: webDeviceID,
-		Status:      domain.WebPairingStatusSynced,
-		SyncedCount: syncedCount,
-		SyncedAt:    timePtr(time.Now()),
 	}, nil
 }
 

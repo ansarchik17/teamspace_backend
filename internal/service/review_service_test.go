@@ -35,20 +35,11 @@ func (s calendarRepoStub) HasAnyInteractionBetweenUsers(ctx context.Context, use
 	return s.hasInteraction, nil
 }
 
-type chatRepoStub struct {
-	conversation *domain.Conversation
-}
-
-func (s chatRepoStub) GetConversationByParticipants(ctx context.Context, user1ID, user2ID int64) (*domain.Conversation, error) {
-	return s.conversation, nil
-}
-
 func TestCreateReviewReturnsLocalizedForbiddenMessageWhenNoInteraction(t *testing.T) {
 	t.Parallel()
 
 	svc := NewReviewService(
 		reviewRepoStub{},
-		chatRepoStub{},
 		taskRepoStub{},
 		calendarRepoStub{},
 		nil,
@@ -72,7 +63,7 @@ func TestCreateReviewReturnsLocalizedForbiddenMessageWhenNoInteraction(t *testin
 		t.Fatalf("expected forbidden error, got %s", appErr.Code)
 	}
 
-	want := "Вы можете оставлять отзывы только тем пользователям, с которыми у вас были общие задачи, встречи или чаты"
+	want := "Вы можете оставлять отзывы только тем пользователям, с которыми у вас были общие задачи или встречи"
 	if appErr.Message != want {
 		t.Fatalf("expected localized message %q, got %q", want, appErr.Message)
 	}

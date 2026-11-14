@@ -21,19 +21,19 @@ const (
 )
 
 type mockE2EERepo struct {
-	upsertPublicKeyFn                    func(ctx context.Context, key *domain.UserPublicKey) error
-	getKeysByUserFn                      func(ctx context.Context, userID int64) (map[string]string, error)
-	upsertKeyBackupFn                    func(ctx context.Context, backup *domain.UserKeyBackup) error
-	getKeyBackupFn                       func(ctx context.Context, userID int64) (*domain.UserKeyBackup, error)
-	deleteKeyBackupFn                    func(ctx context.Context, userID int64) error
-	createWebPairingSessionFn            func(ctx context.Context, session *domain.WebPairingSession) error
-	getWebPairingBySessionTokenFn        func(ctx context.Context, pairingID uuid.UUID, sessionTokenHash string) (*domain.WebPairingSession, error)
-	getWebPairingByQRTokenFn             func(ctx context.Context, pairingID uuid.UUID, qrTokenHash string) (*domain.WebPairingSession, error)
-	approveWebPairingSessionFn           func(ctx context.Context, pairingID uuid.UUID, userID int64, loginCodeHash *string, deviceName, platform *string) (*domain.WebPairingSession, error)
-	rejectWebPairingSessionFn            func(ctx context.Context, pairingID uuid.UUID, userID int64) (*domain.WebPairingSession, error)
-	markWebPairingHistorySyncedFn        func(ctx context.Context, pairingID uuid.UUID) error
-	redeemWebPairingSessionFn            func(ctx context.Context, pairingID uuid.UUID, sessionTokenHash string) (*domain.WebPairingSession, error)
-	appendHistoryKeysForDeviceFn         func(ctx context.Context, userID int64, pairingID uuid.UUID, webDeviceID string, items []domain.WebHistorySyncItem) (int, error)
+	upsertPublicKeyFn             func(ctx context.Context, key *domain.UserPublicKey) error
+	getKeysByUserFn               func(ctx context.Context, userID int64) (map[string]string, error)
+	upsertKeyBackupFn             func(ctx context.Context, backup *domain.UserKeyBackup) error
+	getKeyBackupFn                func(ctx context.Context, userID int64) (*domain.UserKeyBackup, error)
+	deleteKeyBackupFn             func(ctx context.Context, userID int64) error
+	createWebPairingSessionFn     func(ctx context.Context, session *domain.WebPairingSession) error
+	getWebPairingBySessionTokenFn func(ctx context.Context, pairingID uuid.UUID, sessionTokenHash string) (*domain.WebPairingSession, error)
+	getWebPairingByQRTokenFn      func(ctx context.Context, pairingID uuid.UUID, qrTokenHash string) (*domain.WebPairingSession, error)
+	approveWebPairingSessionFn    func(ctx context.Context, pairingID uuid.UUID, userID int64, loginCodeHash *string, deviceName, platform *string) (*domain.WebPairingSession, error)
+	rejectWebPairingSessionFn     func(ctx context.Context, pairingID uuid.UUID, userID int64) (*domain.WebPairingSession, error)
+
+	redeemWebPairingSessionFn func(ctx context.Context, pairingID uuid.UUID, sessionTokenHash string) (*domain.WebPairingSession, error)
+
 	updateLinkedDeviceAccessMetaFn       func(ctx context.Context, userID int64, deviceID string, meta *domain.ClientMetadata) error
 	listLinkedDevicesFn                  func(ctx context.Context, userID int64) ([]*domain.LinkedDevice, error)
 	revokeLinkedDeviceFn                 func(ctx context.Context, userID int64, deviceID string) error
@@ -113,25 +113,11 @@ func (m *mockE2EERepo) RejectWebPairingSession(ctx context.Context, pairingID uu
 	return nil, nil
 }
 
-func (m *mockE2EERepo) MarkWebPairingHistorySynced(ctx context.Context, pairingID uuid.UUID) error {
-	if m.markWebPairingHistorySyncedFn != nil {
-		return m.markWebPairingHistorySyncedFn(ctx, pairingID)
-	}
-	return nil
-}
-
 func (m *mockE2EERepo) RedeemWebPairingSession(ctx context.Context, pairingID uuid.UUID, sessionTokenHash string) (*domain.WebPairingSession, error) {
 	if m.redeemWebPairingSessionFn != nil {
 		return m.redeemWebPairingSessionFn(ctx, pairingID, sessionTokenHash)
 	}
 	return nil, nil
-}
-
-func (m *mockE2EERepo) AppendHistoryKeysForDevice(ctx context.Context, userID int64, pairingID uuid.UUID, webDeviceID string, items []domain.WebHistorySyncItem) (int, error) {
-	if m.appendHistoryKeysForDeviceFn != nil {
-		return m.appendHistoryKeysForDeviceFn(ctx, userID, pairingID, webDeviceID, items)
-	}
-	return 0, nil
 }
 
 func (m *mockE2EERepo) UpdateLinkedDeviceAccessMetadata(ctx context.Context, userID int64, deviceID string, meta *domain.ClientMetadata) error {

@@ -58,7 +58,7 @@ func TestIFormProvisioningReusesCommittedEmployeeAfterLostOperationReceipt(t *te
 		}
 	}))
 	defer server.Close()
-	svc := NewKeycloakService(repo, nil, nil, nil, nil, keycloak.NewAdmin(server.URL, "master", "admin", "admin"), "test")
+	svc := NewKeycloakService(repo, nil, nil, nil, keycloak.NewAdmin(server.URL, "master", "admin", "admin"), "test")
 	start := "2026-12-01"
 	for i := 0; i < 3; i++ {
 		// Simulate a lost Workspace receipt/response: the next call must recover

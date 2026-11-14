@@ -2,15 +2,12 @@ package service
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"sort"
 	"strings"
 	"sync"
 	"time"
-	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/west6ide/workspace-backend/internal/apperrors"
@@ -35,8 +32,8 @@ const (
 )
 
 type SearchService struct {
-	userRepo    *repository.UserRepository
-	messageRepo *repository.MessageRepository
+	userRepo *repository.UserRepository
+
 	noteService *NoteService
 	logger      *zap.Logger
 }
@@ -51,12 +48,12 @@ type globalSearchEntityResult struct {
 	users         []*domain.UserResponse
 	tasks         []*domain.Task
 	organizations []domain.SearchResult
-	messages      []domain.MessageSearchResult
-	events        []domain.Event
-	meetings      []domain.Event
-	documents     []domain.DriveItem
-	notes         []domain.Note
-	items         []rankedGlobalSearchItem
+
+	events    []domain.Event
+	meetings  []domain.Event
+	documents []domain.DriveItem
+	notes     []domain.Note
+	items     []rankedGlobalSearchItem
 }
 
 type rankedGlobalSearchItem struct {
@@ -104,13 +101,11 @@ func (p globalSearchProviderFunc) Empty() map[string]globalSearchEntityResult {
 
 func NewSearchService(
 	userRepo *repository.UserRepository,
-	messageRepo *repository.MessageRepository,
 	noteService *NoteService,
 	logger *zap.Logger,
 ) *SearchService {
 	return &SearchService{
 		userRepo:    userRepo,
-		messageRepo: messageRepo,
 		noteService: noteService,
 		logger:      logger.With(zap.String("service", "search")),
 	}
@@ -139,47 +134,6 @@ func (s *SearchService) SearchUsers(ctx context.Context, userID int64, query str
 	s.logger.Info("Users searched", zap.Int("results", len(responses)))
 
 	return responses, nil
-}
-
-func (s *SearchService) SearchMessages(ctx context.Context, conversationID uuid.UUID, userID int64, query string, limit int) ([]*domain.MessageView, error) {
-	query = strings.TrimSpace(query)
-	if query == "" {
-		return nil, apperrors.BadRequest("search query must not be empty")
-	}
-
-	if limit <= 0 || limit > maxMessageSearchLimit {
-		limit = defaultMessageSearchLimit
-	}
-
-	messages, err := s.messageRepo.SearchMessages(ctx, conversationID, userID, query, limit)
-	if err != nil {
-		return nil, apperrors.InternalWithErr("failed to search messages", err)
-	}
-
-	s.logger.Info("Messages searched",
-		zap.String("conversation_id", conversationID.String()),
-		zap.Int("results", len(messages)),
-	)
-
-	return messages, nil
-}
-
-func (s *SearchService) FindIdenticalMessages(ctx context.Context, userID int64, content string) ([]*domain.MessageView, error) {
-	if content == "" {
-		return nil, apperrors.BadRequest("content cannot be empty")
-	}
-
-	hash := sha256.Sum256([]byte(strings.TrimSpace(content)))
-	hashStr := hex.EncodeToString(hash[:])
-
-	messages, err := s.messageRepo.GetByContentHash(ctx, hashStr, userID)
-	if err != nil {
-		return nil, apperrors.InternalWithErr("failed to find identical messages", err)
-	}
-
-	s.logger.Info("Identical messages found", zap.String("hash", hashStr), zap.Int("results", len(messages)))
-
-	return messages, nil
 }
 
 func (s *SearchService) SearchGlobal(ctx context.Context, userID int64, query string, limit int) (map[string]interface{}, error) {
@@ -311,17 +265,6 @@ func (s *SearchService) buildGlobalSearchProviders(deps SearchAllDependencies) [
 			},
 		},
 		globalSearchProviderFunc{
-			name:  "messages",
-			empty: map[string]globalSearchEntityResult{"messages": {messages: []domain.MessageSearchResult{}}},
-			search: func(ctx context.Context, userID int64, query string, opts globalSearchExecutionOptions) (map[string]globalSearchEntityResult, error) {
-				result, err := s.searchMessagesForGlobal(ctx, userID, query, opts.providerLimit)
-				if err != nil {
-					return nil, err
-				}
-				return map[string]globalSearchEntityResult{"messages": result}, nil
-			},
-		},
-		globalSearchProviderFunc{
 			name: "calendar",
 			empty: map[string]globalSearchEntityResult{
 				"events":   {events: []domain.Event{}},
@@ -443,41 +386,6 @@ func (s *SearchService) searchTasksForGlobal(ctx context.Context, userID int64, 
 
 func (s *SearchService) searchOrganizationsForGlobal(ctx context.Context, query string, limit int) (globalSearchEntityResult, error) {
 	return globalSearchEntityResult{organizations: []domain.SearchResult{}}, nil
-}
-
-func (s *SearchService) searchMessagesForGlobal(ctx context.Context, userID int64, query string, limit int) (globalSearchEntityResult, error) {
-	results, err := s.messageRepo.SearchGlobal(ctx, userID, query, limit)
-	if err != nil {
-		return globalSearchEntityResult{messages: []domain.MessageSearchResult{}}, err
-	}
-
-	items := make([]rankedGlobalSearchItem, 0, len(results))
-	for _, result := range results {
-		title := strings.TrimSpace(firstNonEmptyString(result.SenderFullName, result.SenderUsername, "Сообщение"))
-		description := truncateSnippet(result.Content, 200)
-		item := domain.SearchResultItem{
-			Type:         "message",
-			ID:           result.ID,
-			Title:        title,
-			Description:  description,
-			MatchedField: bestMatchedField(query, []globalSearchFieldCandidate{{Name: "text", Value: result.Content}, {Name: "sender", Value: title}}),
-			CreatedAt:    copyTimePtr(&result.CreatedAt),
-			UpdatedAt:    copyTimePtr(&result.UpdatedAt),
-			Payload: map[string]any{
-				"id":              result.ID,
-				"conversation_id": result.ConversationID,
-				"sender_id":       result.SenderID,
-				"type":            result.Type,
-			},
-		}
-		items = append(items, rankedGlobalSearchItem{
-			item:     item,
-			score:    scoreGlobalSearchItem(query, item, []globalSearchFieldCandidate{{Name: "text", Value: result.Content}, {Name: "sender", Value: title}}),
-			sortTime: latestTime(result.UpdatedAt, result.CreatedAt),
-		})
-	}
-
-	return globalSearchEntityResult{messages: results, items: items}, nil
 }
 
 func (s *SearchService) searchEventsForGlobal(ctx context.Context, userID int64, query string, limit int, calendarService *CalendarService) (globalSearchEntityResult, globalSearchEntityResult, error) {
@@ -682,11 +590,11 @@ func defaultGlobalSearchResults() map[string]globalSearchEntityResult {
 		"users":         {users: []*domain.UserResponse{}},
 		"tasks":         {tasks: []*domain.Task{}},
 		"organizations": {organizations: []domain.SearchResult{}},
-		"messages":      {messages: []domain.MessageSearchResult{}},
-		"events":        {events: []domain.Event{}},
-		"meetings":      {meetings: []domain.Event{}},
-		"documents":     {documents: []domain.DriveItem{}},
-		"notes":         {notes: []domain.Note{}},
+
+		"events":    {events: []domain.Event{}},
+		"meetings":  {meetings: []domain.Event{}},
+		"documents": {documents: []domain.DriveItem{}},
+		"notes":     {notes: []domain.Note{}},
 	}
 }
 
@@ -746,7 +654,7 @@ func assembleGlobalSearchResponse(query string, opts globalSearchExecutionOption
 		Users:         entities["users"].users,
 		Tasks:         entities["tasks"].tasks,
 		Organizations: entities["organizations"].organizations,
-		Messages:      entities["messages"].messages,
+		Messages:      []any{},
 		Events:        entities["events"].events,
 		Meetings:      entities["meetings"].meetings,
 		Documents:     entities["documents"].documents,
@@ -870,88 +778,4 @@ func uuidString(value *uuid.UUID) string {
 		return ""
 	}
 	return value.String()
-}
-
-// SearchMessagesGlobal выполняет глобальный поиск по всем доступным пользователю чатам
-func (s *SearchService) SearchMessagesGlobal(ctx context.Context, userID int64, query string, filters map[string]interface{}, limit, offset int) ([]*domain.MessageView, int, error) {
-	query = strings.TrimSpace(query)
-	queryLength := utf8.RuneCountInString(query)
-	if queryLength < 2 {
-		return nil, 0, apperrors.BadRequest("search query must be at least 2 characters")
-	}
-	if queryLength > 256 {
-		return nil, 0, apperrors.BadRequest("search query must not exceed 256 characters")
-	}
-
-	if limit <= 0 || limit > maxMessageSearchLimit {
-		limit = 20
-	}
-	if offset < 0 {
-		offset = 0
-	}
-	if offset > 10000 {
-		return nil, 0, apperrors.BadRequest("search offset must not exceed 10000")
-	}
-
-	messages, totalCount, err := s.messageRepo.SearchMessagesGlobal(ctx, userID, query, filters, limit, offset)
-	if err != nil {
-		return nil, 0, apperrors.InternalWithErr("failed to search messages globally", err)
-	}
-
-	s.logger.Info("Global message search completed",
-		zap.Int64("user_id", userID),
-		zap.Int("query_length", queryLength),
-		zap.Int("results", len(messages)),
-		zap.Int("total_count", totalCount),
-	)
-
-	return messages, totalCount, nil
-}
-
-// SearchAttachments ищет вложения в доступных пользователю чатах
-func (s *SearchService) SearchAttachments(ctx context.Context, userID int64, filters map[string]interface{}, limit, offset int) ([]*domain.MessageView, int, error) {
-	if limit <= 0 || limit > maxMessageSearchLimit {
-		limit = 20
-	}
-	if offset < 0 {
-		offset = 0
-	}
-	if offset > 10000 {
-		return nil, 0, apperrors.BadRequest("search offset must not exceed 10000")
-	}
-	if query, ok := filters["query"].(string); ok && utf8.RuneCountInString(strings.TrimSpace(query)) > 256 {
-		return nil, 0, apperrors.BadRequest("attachment query must not exceed 256 characters")
-	}
-
-	attachments, totalCount, err := s.messageRepo.SearchAttachments(ctx, userID, filters, limit, offset)
-	if err != nil {
-		return nil, 0, apperrors.InternalWithErr("failed to search attachments", err)
-	}
-
-	s.logger.Info("Attachment search completed",
-		zap.Int64("user_id", userID),
-		zap.Int("results", len(attachments)),
-		zap.Int("total_count", totalCount),
-	)
-
-	return attachments, totalCount, nil
-}
-
-// GetAttachmentStats возвращает статистику по вложениям в чате
-func (s *SearchService) GetAttachmentStats(ctx context.Context, chatID uuid.UUID, userID int64) (map[string]int, int64, error) {
-	stats, totalSize, err := s.messageRepo.GetAttachmentStats(ctx, chatID, userID)
-	if err != nil {
-		if errors.Is(err, repository.ErrMessageSearchAccessDenied) {
-			return nil, 0, apperrors.Forbidden("you do not have access to this chat")
-		}
-		return nil, 0, apperrors.InternalWithErr("failed to get attachment stats", err)
-	}
-
-	s.logger.Info("Attachment stats retrieved",
-		zap.Int64("user_id", userID),
-		zap.String("chat_id", chatID.String()),
-		zap.Int("total_files", len(stats)),
-	)
-
-	return stats, totalSize, nil
 }

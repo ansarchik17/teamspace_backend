@@ -2564,6 +2564,9 @@ func sanitizeRedirectTarget(value string) string {
 		parsed.Path = defaultWebRedirectTarget
 		return parsed.String()
 	}
+	if parsed.Path == "/messenger" || strings.HasPrefix(parsed.Path, "/messenger/") || parsed.Path == "/web/messenger" || strings.HasPrefix(parsed.Path, "/web/messenger/") {
+		return "/web/workspace"
+	}
 	if strings.HasPrefix(parsed.Path, "/web/") {
 		return parsed.String()
 	}
@@ -2571,7 +2574,6 @@ func sanitizeRedirectTarget(value string) string {
 	for _, legacyPrefix := range []string{
 		"/dashboard",
 		"/main",
-		"/messenger",
 		"/settings",
 		"/login",
 		"/register",

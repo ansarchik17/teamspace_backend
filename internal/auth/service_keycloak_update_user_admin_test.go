@@ -98,9 +98,6 @@ func (s *updateUserAdminRepoStub) GetNeverLoggedIn(_ context.Context) ([]*domain
 	return nil, nil
 }
 
-func (s *updateUserAdminRepoStub) ShareConversation(_ context.Context, _, _ int64) (bool, error) {
-	return false, nil
-}
 func (s *updateUserAdminRepoStub) ExportMinistryUsers(_ context.Context, _ int64, _ []int64, _ []int64, _ []int64) ([]domain.MinistryUserExportRow, error) {
 	return nil, nil
 }
@@ -156,7 +153,6 @@ func TestUpdateUserAdminSyncsNamesToKeycloak(t *testing.T) {
 
 	svc := NewKeycloakService(
 		repo,
-		nil,
 		nil,
 		nil,
 		nil,
@@ -253,7 +249,6 @@ func TestResetUserPasswordAdminMarksFirstLoginAndLogsOutSessions(t *testing.T) {
 
 	svc := NewKeycloakService(
 		repo,
-		nil,
 		nil,
 		nil,
 		nil,

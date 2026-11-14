@@ -22,9 +22,7 @@ type e2eeRepository interface {
 	GetWebPairingSessionByQRToken(ctx context.Context, pairingID uuid.UUID, qrTokenHash string) (*domain.WebPairingSession, error)
 	ApproveWebPairingSession(ctx context.Context, pairingID uuid.UUID, userID int64, loginCodeHash *string, deviceName, platform *string) (*domain.WebPairingSession, error)
 	RejectWebPairingSession(ctx context.Context, pairingID uuid.UUID, userID int64) (*domain.WebPairingSession, error)
-	MarkWebPairingHistorySynced(ctx context.Context, pairingID uuid.UUID) error
 	RedeemWebPairingSession(ctx context.Context, pairingID uuid.UUID, sessionTokenHash string) (*domain.WebPairingSession, error)
-	AppendHistoryKeysForDevice(ctx context.Context, userID int64, pairingID uuid.UUID, webDeviceID string, items []domain.WebHistorySyncItem) (int, error)
 	UpdateLinkedDeviceAccessMetadata(ctx context.Context, userID int64, deviceID string, meta *domain.ClientMetadata) error
 	ListLinkedDevices(ctx context.Context, userID int64) ([]*domain.LinkedDevice, error)
 	RevokeLinkedDevice(ctx context.Context, userID int64, deviceID string) error

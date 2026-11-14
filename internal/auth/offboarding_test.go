@@ -79,7 +79,7 @@ func TestOffboardingDisablesIdentityAndPreservesAdminBarrier(t *testing.T) {
 	}))
 	defer server.Close()
 	repo := &offboardingAuthRepo{updateUserAdminRepoStub: updateUserAdminRepoStub{user: &domain.User{ID: 77, KeycloakID: &kcID, IsActive: false}}}
-	svc := NewKeycloakService(repo, nil, nil, nil, nil, keycloak.NewAdmin(server.URL, "master", "admin", "test"), "test")
+	svc := NewKeycloakService(repo, nil, nil, nil, keycloak.NewAdmin(server.URL, "master", "admin", "test"), "test")
 	require.NoError(t, svc.DisableOffboardedIdentity(ctx, 77))
 	require.NoError(t, svc.DisableOffboardedIdentity(ctx, 77))
 	require.Equal(t, 2, disabled)

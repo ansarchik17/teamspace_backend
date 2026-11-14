@@ -22,10 +22,6 @@ type userQRUserRepository interface {
 	GetByID(ctx context.Context, id int64) (*domain.User, error)
 }
 
-type userQRConversationRepository interface {
-	GetConversationByParticipants(ctx context.Context, user1ID, user2ID int64) (*domain.Conversation, error)
-}
-
 type CreateUserQRCodeRequest struct {
 	TTLSeconds *int `json:"ttl_seconds,omitempty"`
 }
@@ -48,10 +44,8 @@ type ScanUserQRCodeRequest struct {
 }
 
 type ScannedUserQRCodeResponse struct {
-	User           *ScannedQRCodeUser `json:"user"`
-	ExpiresAt      time.Time          `json:"expires_at"`
-	HasChat        bool               `json:"has_chat"`
-	ConversationID *uuid.UUID         `json:"conversation_id,omitempty"`
+	User      *ScannedQRCodeUser `json:"user"`
+	ExpiresAt time.Time          `json:"expires_at"`
 }
 
 type ScannedQRCodeUser struct {
@@ -68,25 +62,23 @@ type ScannedQRCodeUser struct {
 }
 
 type UserQRService struct {
-	repo             *repository.UserQRRepository
-	userRepo         userQRUserRepository
-	conversationRepo userQRConversationRepository
-	logger           *zap.Logger
-	now              func() time.Time
+	repo     *repository.UserQRRepository
+	userRepo userQRUserRepository
+
+	logger *zap.Logger
+	now    func() time.Time
 }
 
 func NewUserQRService(
 	repo *repository.UserQRRepository,
 	userRepo userQRUserRepository,
-	conversationRepo userQRConversationRepository,
 	logger *zap.Logger,
 ) *UserQRService {
 	return &UserQRService{
-		repo:             repo,
-		userRepo:         userRepo,
-		conversationRepo: conversationRepo,
-		logger:           logger.With(zap.String("service", "user_qr")),
-		now:              time.Now,
+		repo:     repo,
+		userRepo: userRepo,
+		logger:   logger.With(zap.String("service", "user_qr")),
+		now:      time.Now,
 	}
 }
 
@@ -168,17 +160,6 @@ func (s *UserQRService) Scan(ctx context.Context, scannerUserID int64, rawToken 
 	resp := &ScannedUserQRCodeResponse{
 		User:      buildScannedQRCodeUser(user),
 		ExpiresAt: token.ExpiresAt,
-	}
-
-	if s.conversationRepo != nil {
-		conversation, err := s.conversationRepo.GetConversationByParticipants(ctx, scannerUserID, token.UserID)
-		if err != nil {
-			return nil, apperrors.InternalWithErr("failed to resolve existing conversation", err)
-		}
-		if conversation != nil {
-			resp.HasChat = true
-			resp.ConversationID = &conversation.ID
-		}
 	}
 
 	return resp, nil

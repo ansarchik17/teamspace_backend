@@ -98,7 +98,7 @@ func TestMainChatAgentRejectsMalformedOrAmbiguousWrites(t *testing.T) {
 	} {
 		result, cards, pending := agent.runMainChatTool(ctx, identity, call)
 		want := "invalid_request"
-		if call.Function.Name == "create_calendar_event" || call.Function.Name == "set_event_reminder" || (call.Function.Name == "send_broadcast" && strings.Contains(call.Function.Arguments, "[]")) {
+		if call.Function.Name == "create_calendar_event" || call.Function.Name == "set_event_reminder" {
 			want = "clarification_required"
 		}
 		require.Equal(t, want, result.Status)
@@ -218,5 +218,12 @@ func TestMainChatAgentLoopSearchesDocumentsThenWebWithProvenance(t *testing.T) {
 			require.Equal(t, "https://example.org", resp.DataCards[0].ExternalURL)
 			require.Greater(t, resp.Usage.TotalTokens, 0)
 		})
+	}
+}
+
+func TestMainChatDoesNotOfferMessengerWrites(t *testing.T) {
+	agent := &SmartAgentService{}
+	for _, tool := range agent.mainChatTools() {
+		require.NotEqual(t, "send_broadcast", tool.Function.Name)
 	}
 }

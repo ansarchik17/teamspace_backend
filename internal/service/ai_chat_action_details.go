@@ -22,7 +22,6 @@ var mainChatActionContracts = map[string]chatActionContract{
 	"create_kanban_task":    {[]chatActionField{{"title", "название задачи"}, {"priority", "приоритет"}, {"due_at", "срок"}, {"assignee_ids", "исполнителя"}}},
 	"create_calendar_event": {[]chatActionField{{"title", "название встречи"}, {"start_time", "дату и время начала"}, {"end_time", "время окончания или длительность"}, {"attendee_ids", "участников (или укажите, что это личное событие)"}}},
 	"create_online_meeting": {[]chatActionField{{"meeting_name", "название видеовстречи"}, {"from_date", "дату и время начала"}, {"to_date", "время окончания или длительность"}, {"attendee_ids", "участников"}}},
-	"send_broadcast":        {[]chatActionField{{"message", "текст сообщения"}, {"recipient_user_ids", "получателя"}}},
 	"set_event_reminder":    {[]chatActionField{{"event_id", "конкретную встречу"}, {"minutes_before", "за сколько минут напомнить"}}},
 	"cancel_calendar_event": {[]chatActionField{{"event_id", "какую встречу отменить"}}},
 	"close_kanban_task":     {[]chatActionField{{"task_id", "какую задачу закрыть"}}},
@@ -126,8 +125,6 @@ func chatActionPartyField(name string) (chatActionField, bool) {
 	switch name {
 	case "create_kanban_task":
 		return chatActionField{"assignee_ids", "исполнителя"}, true
-	case "send_broadcast":
-		return chatActionField{"recipient_user_ids", "получателя"}, true
 	case "create_calendar_event", "create_online_meeting":
 		return chatActionField{"attendee_ids", "участников встречи"}, true
 	}
@@ -160,9 +157,6 @@ func chatActionTitleInUserText(value, text string) bool {
 }
 
 func chatActionUserFields(name string, args map[string]any, userText string, now time.Time) error {
-	if name == "send_broadcast" && chatEmailRequested(userText) {
-		return fmt.Errorf("Для email доступна подготовка черновика. Отправка сообщения в мессенджере не заменяет письмо.")
-	}
 	// Optional prose also needs user input; omitting it is preferable to
 	// inventing commitments that would be sent to the underlying service.
 	if description := actionString(args, "description"); description != "" && !actionContentInUserText(description, userText) {
@@ -180,11 +174,6 @@ func chatActionUserFields(name string, args map[string]any, userText string, now
 		}
 	}
 	switch name {
-	case "send_broadcast":
-		checkText("message", "что написать получателю (текст сообщения)")
-		if ids, _ := args["recipient_user_ids"].([]any); len(ids) == 0 {
-			missing = append(missing, "получателя")
-		}
 	case "prepare_email_draft":
 		checkText("recipient", "кому адресовано письмо")
 		brief := actionString(args, "content_brief")

@@ -85,9 +85,6 @@ func (s *meUserRepoStub) GetNeverLoggedIn(_ context.Context) ([]*domain.User, er
 	return nil, nil
 }
 
-func (s *meUserRepoStub) ShareConversation(_ context.Context, _, _ int64) (bool, error) {
-	return false, nil
-}
 func (s *meUserRepoStub) ExportMinistryUsers(_ context.Context, _ int64, _ []int64, _ []int64, _ []int64) ([]domain.MinistryUserExportRow, error) {
 	return nil, nil
 }
@@ -175,7 +172,6 @@ func TestGetCurrentUserIncludesHRDisplayFieldsFromProfile(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		nil,
 		"",
 		WithHRProfileRepository(&meHRProfileRepoStub{
 			profile: &domain.UserHRProfile{
@@ -245,7 +241,6 @@ func TestGetCurrentUserFallsBackToUserHierarchyWhenHRProfileMissing(t *testing.T
 				StateBodyName: strPtr("Public Services Committee"),
 			},
 		},
-		nil,
 		nil,
 		nil,
 		nil,

@@ -10,7 +10,7 @@ import (
 )
 
 func TestSearchAllRejectsEmptyQuery(t *testing.T) {
-	svc := NewSearchService(nil, nil, nil, zap.NewNop())
+	svc := NewSearchService(nil, nil, zap.NewNop())
 
 	_, err := svc.SearchAll(context.Background(), 1, "   ", 10, SearchAllDependencies{})
 	if err == nil {
@@ -52,13 +52,6 @@ func TestAssembleGlobalSearchResponse(t *testing.T) {
 				score: 70, sortTime: now.Add(-2 * time.Minute),
 			}},
 		},
-		"messages": {
-			messages: []domain.MessageSearchResult{{ID: "msg-1", Content: "Обсуждали договор", CreatedAt: now, UpdatedAt: now}},
-			items: []rankedGlobalSearchItem{{
-				item:  domain.SearchResultItem{Type: "message", ID: "msg-1", Title: "Сообщение", MatchedField: "text"},
-				score: 60, sortTime: now.Add(-3 * time.Minute),
-			}},
-		},
 		"events": {
 			events: []domain.Event{{Title: "Встреча по договору", CreatedAt: now, UpdatedAt: now}},
 			items: []rankedGlobalSearchItem{{
@@ -95,7 +88,7 @@ func TestAssembleGlobalSearchResponse(t *testing.T) {
 	if response.Data.Query != "договор" {
 		t.Fatalf("unexpected query: %q", response.Data.Query)
 	}
-	if response.Data.Total != 8 {
+	if response.Data.Total != 7 {
 		t.Fatalf("unexpected total: %d", response.Data.Total)
 	}
 	if len(response.Data.Items) != 3 {
@@ -104,7 +97,7 @@ func TestAssembleGlobalSearchResponse(t *testing.T) {
 	if response.Data.Items[0].Type != "document" {
 		t.Fatalf("expected most relevant item to be document, got %q", response.Data.Items[0].Type)
 	}
-	if len(response.Users) != 1 || len(response.Tasks) != 1 || len(response.Organizations) != 1 || len(response.Messages) != 1 {
+	if len(response.Users) != 1 || len(response.Tasks) != 1 || len(response.Organizations) != 1 {
 		t.Fatalf("expected legacy buckets to be populated")
 	}
 	if len(response.Events) != 1 || len(response.Meetings) != 1 || len(response.Documents) != 1 || len(response.Notes) != 1 {
@@ -113,7 +106,7 @@ func TestAssembleGlobalSearchResponse(t *testing.T) {
 }
 
 func TestSearchAllWithProvidersSkipsTimedOutProvider(t *testing.T) {
-	svc := NewSearchService(nil, nil, nil, zap.NewNop())
+	svc := NewSearchService(nil, nil, zap.NewNop())
 	now := time.Date(2026, 5, 23, 12, 0, 0, 0, time.UTC)
 
 	providers := []globalSearchProvider{
@@ -135,15 +128,15 @@ func TestSearchAllWithProvidersSkipsTimedOutProvider(t *testing.T) {
 		},
 		globalSearchProviderFunc{
 			name:  "slow",
-			empty: map[string]globalSearchEntityResult{"messages": {messages: []domain.MessageSearchResult{}}},
+			empty: map[string]globalSearchEntityResult{"documents": {documents: []domain.DriveItem{}}},
 			search: func(ctx context.Context, _ int64, _ string, _ globalSearchExecutionOptions) (map[string]globalSearchEntityResult, error) {
 				select {
 				case <-ctx.Done():
 					return nil, ctx.Err()
 				case <-time.After(200 * time.Millisecond):
 					return map[string]globalSearchEntityResult{
-						"messages": {
-							messages: []domain.MessageSearchResult{{ID: "m-1"}},
+						"documents": {
+							documents: []domain.DriveItem{{}},
 						},
 					}, nil
 				}
@@ -169,13 +162,13 @@ func TestSearchAllWithProvidersSkipsTimedOutProvider(t *testing.T) {
 	if len(response.Users) != 1 {
 		t.Fatalf("expected fast provider result to survive")
 	}
-	if len(response.Messages) != 0 {
+	if len(response.Documents) != 0 {
 		t.Fatalf("expected timed out provider bucket to stay empty")
 	}
 }
 
 func TestSearchAllWithProvidersRespectsSortingAndLimit(t *testing.T) {
-	svc := NewSearchService(nil, nil, nil, zap.NewNop())
+	svc := NewSearchService(nil, nil, zap.NewNop())
 	now := time.Date(2026, 5, 23, 12, 0, 0, 0, time.UTC)
 
 	providers := []globalSearchProvider{
@@ -230,5 +223,18 @@ func TestSearchAllWithProvidersRespectsSortingAndLimit(t *testing.T) {
 	}
 	if response.Data.Total != 4 {
 		t.Fatalf("unexpected total: %d", response.Data.Total)
+	}
+}
+
+func TestGlobalSearchHasNoMessengerProvider(t *testing.T) {
+	svc := NewSearchService(nil, nil, zap.NewNop())
+	for _, provider := range svc.buildGlobalSearchProviders(SearchAllDependencies{}) {
+		if provider.Name() == "messages" {
+			t.Fatal("messenger search provider remains")
+		}
+	}
+	response := assembleGlobalSearchResponse("query", defaultGlobalSearchExecutionOptions(10), defaultGlobalSearchResults())
+	if response.Messages == nil || len(response.Messages) != 0 {
+		t.Fatal("legacy message bucket must be an empty JSON array")
 	}
 }

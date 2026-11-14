@@ -1,6 +1,8 @@
 package server
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -34,30 +36,23 @@ func TestNewRouterRegistersRoutesWithoutPanic(t *testing.T) {
 		nil,
 		nil,
 		nil,
-		&handler.ChatHandler{},
-		nil,
-		&handler.GroupHandler{},
-		nil,
-		nil,
-		nil,
-		nil,
+		&handler.SearchHandler{},
 		&handler.FileHandler{},
 		&middleware.AuthMiddleware{},
 		nil,
 		nil,
 		nil,
-		nil,
+		&handler.WebSocketHandler{},
 		nil,
 		&handler.DeviceHandler{},
 		nil,
-		nil,
+		&handler.KanbanHandler{},
 		&handler.CalendarHandler{},
 		&handler.PinAuthHandler{},
+		&handler.DriveHandler{},
 		nil,
-		nil,
-		nil,
-		nil,
-		nil,
+		&handler.AlemHandler{},
+		&handler.UnifiedAIHandler{},
 		&handler.ReviewHandler{},
 		nil,
 		nil,
@@ -66,10 +61,8 @@ func TestNewRouterRegistersRoutesWithoutPanic(t *testing.T) {
 		&handler.LiveKitHandler{},
 		&handler.E2EEHandler{},
 		nil,
-		nil,
-		nil,
-		nil,
-		nil,
+		&handler.NotebookHandler{},
+		&handler.NoteHandler{},
 		nil,
 		nil,
 		nil,
@@ -92,6 +85,12 @@ func TestNewRouterRegistersRoutesWithoutPanic(t *testing.T) {
 	}
 	for _, expected := range []struct{ method, path string }{
 		{"POST", "/api/v1/publications/:id/acknowledge"},
+		{"POST", "/api/v1/calls/start"},
+		{"GET", "/api/v1/ws"},
+		{"GET", "/api/v1/search/all"},
+		{"GET", "/api/v1/calendar/calendars"},
+		{"GET", "/api/v1/notes"},
+		{"GET", "/api/v1/notebook/chats"},
 		{"GET", "/api/v1/publications/:id/broadcast/stats"},
 		{"GET", "/api/v1/publications/:id/readers/export"},
 	} {
@@ -103,6 +102,24 @@ func TestNewRouterRegistersRoutesWithoutPanic(t *testing.T) {
 		}
 		if !found {
 			t.Fatalf("missing route: %s %s", expected.method, expected.path)
+		}
+	}
+
+	// Removed modules must have no registered endpoint, even for authenticated clients.
+	removed := []string{"/conversations", "/messages", "/groups", "/channels", "/posts", "/chats", "/chat-commands", "/chat-themes", "/folders", "/search/messages", "/search/attachments", "/search/identical", "/calls/group/start"}
+	for _, route := range router.Routes() {
+		for _, prefix := range removed {
+			path := "/api/v1" + prefix
+			if route.Path == path || strings.HasPrefix(route.Path, path+"/") {
+				t.Fatalf("removed messenger route is still registered: %s %s", route.Method, route.Path)
+			}
+		}
+	}
+	for _, path := range removed {
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, httptest.NewRequest(http.MethodPost, "/api/v1"+path, nil))
+		if response.Code != http.StatusNotFound {
+			t.Fatalf("removed %s returned %d", path, response.Code)
 		}
 	}
 

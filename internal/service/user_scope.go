@@ -24,13 +24,7 @@ func ensureUserScopedAccess(ctx context.Context, userRepo *repository.UserReposi
 	}
 
 	if !domain.CanAccessUserByScope(requester, target) {
-		shared, err := userRepo.ShareConversation(ctx, requesterID, targetUserID)
-		if err != nil {
-			return apperrors.InternalWithErr("failed to check shared conversation scope", err)
-		}
-		if !shared {
-			return apperrors.Forbidden("User is outside your ministry scope")
-		}
+		return apperrors.Forbidden("User is outside your organization scope")
 	}
 
 	return nil

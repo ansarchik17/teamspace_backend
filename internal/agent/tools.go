@@ -48,7 +48,6 @@ type ToolDependencies struct {
 	Kanban        *service.KanbanService
 	Notes         *service.NoteService
 	Drive         *service.DriveService
-	Chat          *service.ChatService
 	BoardRepo     *repository.BoardRepository
 	AgentConfig   *config.AgentConfig
 }
@@ -1022,57 +1021,6 @@ func BuildDefaultTools(deps ToolDependencies) []Tool {
 						Type:    "show_notifications",
 						Label:   "Show notifications",
 						Payload: map[string]interface{}{"notifications": payload},
-					}},
-				}, nil
-			},
-		},
-		&staticTool{
-			name:                 "broadcast",
-			description:          "Отправляет широковещательное сообщение через существующий chat broadcast flow после подтверждения.",
-			intents:              []domain.AgentIntentName{domain.AgentIntentSendBroadcast},
-			actions:              []string{"send_broadcast"},
-			requiresConfirmation: true,
-			handler: func(ctx context.Context, input ToolRequest) (*ToolResult, *apperrors.AppError) {
-				if deps.Chat == nil {
-					return &ToolResult{Answer: "Сервис чатов сейчас недоступен."}, nil
-				}
-				message := firstString(input.Entities["message"])
-				recipientIDs := contextInt64Slice(input.Request.Context, "recipient_user_ids")
-				if message == "" || len(recipientIDs) == 0 {
-					return &ToolResult{
-						Answer:      "Для рассылки нужны текст сообщения и `recipient_user_ids` в контексте запроса.",
-						Suggestions: []string{"Уточните получателей", "Сначала найдите сотрудников"},
-					}, nil
-				}
-				action := &domain.AgentAction{
-					Type:  "send_broadcast",
-					Label: "Send broadcast",
-					Payload: map[string]interface{}{
-						"message":            message,
-						"recipient_user_ids": recipientIDs,
-					},
-				}
-				if !input.Confirmed {
-					return &ToolResult{
-						Answer:               "Подтвердите отправку рассылки.",
-						RequiresConfirmation: true,
-						ProposedAction:       action,
-					}, nil
-				}
-				resp, err := deps.Chat.BroadcastMessage(ctx, input.User.UserID, &service.BroadcastMessageRequest{
-					RecipientUserIDs: recipientIDs,
-					Content:          message,
-					MessageType:      "text",
-				})
-				if err != nil {
-					return nil, apperrors.ToAppError(err)
-				}
-				return &ToolResult{
-					Answer: fmt.Sprintf("Рассылка отправлена. Успешно: %d, ошибок: %d.", resp.SuccessCount, resp.FailureCount),
-					Actions: []domain.AgentAction{{
-						Type:    "broadcast_sent",
-						Label:   "Broadcast sent",
-						Payload: map[string]interface{}{"success_count": resp.SuccessCount, "failure_count": resp.FailureCount},
 					}},
 				}, nil
 			},

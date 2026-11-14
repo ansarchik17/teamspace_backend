@@ -151,3 +151,18 @@ func TestCloseUserSessionsBySessionKeys_ClosesOnlyMatchingSessions(t *testing.T)
 		t.Fatal("other session must stay connected")
 	}
 }
+
+func TestRemovedMessengerEventsCannotReachOtherSessions(t *testing.T) {
+	hub := NewHub(zap.NewNop(), nil, nil)
+	client := &Client{UserID: 1, hub: hub, send: make(chan *Message, 4), logger: zap.NewNop()}
+	for _, event := range []string{"message", "typing", "read", "sync_request"} {
+		client.handleInbound(&Message{Type: event, From: 1, To: 2})
+	}
+	if len(hub.broadcast) != 0 || len(client.send) != 0 {
+		t.Fatal("removed messenger events must be ignored")
+	}
+	client.handleInbound(&Message{Type: "ping"})
+	if got := <-client.send; got.Type != "pong" || got.To != 1 {
+		t.Fatalf("notification connection heartbeat failed: %+v", got)
+	}
+}

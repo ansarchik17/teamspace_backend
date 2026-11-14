@@ -30,7 +30,7 @@ func TestKanbanTaskMovedRouting(t *testing.T) {
 	// Untrusted routing fields must not redirect the event to the outsider.
 	clients[0].handleInbound(&Message{Type: "kanban_task_moved", From: 3, To: 3,
 		BoardID: &board, TaskID: &task, FromColumnID: &from, ToColumnID: &to,
-		ConversationID: &task, Content: "untrusted"})
+		Content: "untrusted"})
 	for i, c := range clients {
 		want := 1
 		if i == 3 {
@@ -43,7 +43,7 @@ func TestKanbanTaskMovedRouting(t *testing.T) {
 			continue
 		}
 		got := <-c.send
-		if got.From != 1 || got.To != 0 || got.ConversationID != nil || got.Content != nil || got.Timestamp == 0 {
+		if got.From != 1 || got.To != 0 || got.Content != nil || got.Timestamp == 0 {
 			t.Fatalf("unsafe event: %+v", got)
 		}
 		data, err := MarshalMessage(got)

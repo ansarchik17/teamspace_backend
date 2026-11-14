@@ -109,10 +109,6 @@ func (r *keywordIntentResolver) Resolve(_ context.Context, req *domain.AgentChat
 	case containsAny(msg, "уведомлен", "notification"):
 		intent.Name = domain.AgentIntentGetNotify
 		intent.Confidence = 0.95
-	case containsAny(msg, "рассылк", "broadcast", "отправь всем", "send to many"):
-		intent.Name = domain.AgentIntentSendBroadcast
-		intent.Confidence = 0.93
-		intent.RequiresConfirmation = true
 	case containsAny(msg, "позвони", "call"):
 		intent.Name = domain.AgentIntentStartCall
 		intent.Confidence = 0.89

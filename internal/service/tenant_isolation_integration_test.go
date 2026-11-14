@@ -3,15 +3,16 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"strconv"
+	"strings"
+	"testing"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 	"github.com/west6ide/workspace-backend/internal/repository"
 	"go.uber.org/zap"
-	"os"
-	"strconv"
-	"strings"
-	"testing"
 )
 
 func TestBAS022SearchAndAgentTenantIsolation(t *testing.T) {
@@ -65,7 +66,17 @@ func TestBAS022SearchAndAgentTenantIsolation(t *testing.T) {
 	for _, u := range directory {
 		require.Contains(t, []int64{11, 12, 41}, u.ID)
 	}
-	search := NewSearchService(repo, nil, nil, zap.NewNop())
+	// Presence and scoped access work in a schema with no messenger tables.
+	presence := repository.NewStatusRepository(pool, zap.NewNop())
+	recipients, err := presence.GetInterestedUsers(ctx, 11)
+	require.NoError(t, err)
+	require.Equal(t, []int64{12}, recipients)
+	recipients, err = presence.GetInterestedUsers(ctx, 41)
+	require.NoError(t, err)
+	require.Empty(t, recipients)
+	require.NoError(t, ensureUserScopedAccess(ctx, repo, 11, 12))
+	require.Error(t, ensureUserScopedAccess(ctx, repo, 11, 21))
+	search := NewSearchService(repo, nil, zap.NewNop())
 	for _, actor := range []int64{11, 21, 31} {
 		t.Run(strconv.FormatInt(actor, 10), func(t *testing.T) {
 			users, err := search.SearchUsers(ctx, actor, "CANARY", 50)
@@ -111,6 +122,9 @@ func TestBAS022SearchAndAgentTenantIsolation(t *testing.T) {
 	// Re-resolve scope on every call; no stale scope after a company transfer.
 	_, err = pool.Exec(ctx, "UPDATE users SET organization_id=$1 WHERE id=11", b)
 	require.NoError(t, err)
+	recipients, err = presence.GetInterestedUsers(ctx, 11)
+	require.NoError(t, err)
+	require.Equal(t, []int64{21}, recipients)
 	moved, err := search.SearchUsers(ctx, 11, "CANARY", 50)
 	require.NoError(t, err)
 	require.Len(t, moved, 2)

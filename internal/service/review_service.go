@@ -24,13 +24,9 @@ type CalendarRepoForReview interface {
 	HasAnyInteractionBetweenUsers(ctx context.Context, user1ID, user2ID int64) (bool, error)
 }
 
-type ChatRepoForReview interface {
-	GetConversationByParticipants(ctx context.Context, user1ID, user2ID int64) (*domain.Conversation, error)
-}
-
 type ReviewService struct {
-	reviewRepo   ReviewRepo
-	chatRepo     ChatRepoForReview
+	reviewRepo ReviewRepo
+
 	taskRepo     TaskRepoForReview
 	calendarRepo CalendarRepoForReview
 	gamification *GamificationService // новое поле
@@ -39,7 +35,6 @@ type ReviewService struct {
 
 func NewReviewService(
 	reviewRepo ReviewRepo,
-	chatRepo ChatRepoForReview,
 	taskRepo TaskRepoForReview,
 	calendarRepo CalendarRepoForReview,
 	gamification *GamificationService,
@@ -47,7 +42,6 @@ func NewReviewService(
 ) *ReviewService {
 	return &ReviewService{
 		reviewRepo:   reviewRepo,
-		chatRepo:     chatRepo,
 		taskRepo:     taskRepo,
 		calendarRepo: calendarRepo,
 		gamification: gamification,
@@ -60,14 +54,6 @@ func (s *ReviewService) CheckReviewStatus(ctx context.Context, reviewerID, targe
 }
 
 func (s *ReviewService) hasAnyInteraction(ctx context.Context, reviewerID, targetID int64) (bool, error) {
-	conv, err := s.chatRepo.GetConversationByParticipants(ctx, reviewerID, targetID)
-	if err != nil {
-		return false, err
-	}
-	if conv != nil {
-		return true, nil
-	}
-
 	if s.taskRepo != nil {
 		ok, err := s.taskRepo.HasAnyInteractionBetweenUsers(ctx, reviewerID, targetID)
 		if err != nil {
@@ -101,7 +87,7 @@ func (s *ReviewService) CreateReview(ctx context.Context, reviewerID int64, req 
 		return apperrors.InternalWithErr("failed to verify interaction", err)
 	}
 	if !ok {
-		return apperrors.Forbidden("Вы можете оставлять отзывы только тем пользователям, с которыми у вас были общие задачи, встречи или чаты")
+		return apperrors.Forbidden("Вы можете оставлять отзывы только тем пользователям, с которыми у вас были общие задачи или встречи")
 	}
 
 	exists, err := s.reviewRepo.HasReviewedThisMonth(ctx, reviewerID, req.TargetUserID)

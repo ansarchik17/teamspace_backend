@@ -54,7 +54,7 @@ func TestEmployeeCreationRetriesOnlyAfterRetiredIdentityCleanup(t *testing.T) {
 			if scenario == "cleanup_failed" {
 				repo.err = errors.New("cleanup unavailable")
 			}
-			s := NewKeycloakService(repo, nil, nil, nil, nil, keycloak.NewAdmin(server.URL, "master", "admin", "test"), "test")
+			s := NewKeycloakService(repo, nil, nil, nil, keycloak.NewAdmin(server.URL, "master", "admin", "test"), "test")
 			id, err := s.createEmployeeKeycloakIdentity(context.Background(), keycloak.CreateUserRequest{Email: "test@example.invalid", Username: "test"}, "000000000000")
 			require.Equal(t, 1, repo.calls)
 			if scenario == "recreated" {

@@ -76,11 +76,6 @@ type WebPairingSession struct {
 	LoginCodeHash    *string `json:"-" db:"login_code_hash"`
 }
 
-type WebHistorySyncItem struct {
-	MessageID          uuid.UUID `json:"message_id"`
-	EncryptedKeyForWeb string    `json:"encrypted_key_for_web"`
-}
-
 type ClientMetadata struct {
 	IP        *string `json:"ip,omitempty"`
 	Country   *string `json:"country,omitempty"`

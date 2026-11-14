@@ -28,7 +28,6 @@ const (
 	AgentIntentGetDriveAccess  AgentIntentName = "get_drive_access"
 	AgentIntentShareDrive      AgentIntentName = "share_drive_resource"
 	AgentIntentCreateDriveLink AgentIntentName = "create_drive_share_link"
-	AgentIntentSendBroadcast   AgentIntentName = "send_broadcast"
 	AgentIntentCreateMeeting   AgentIntentName = "create_online_meeting"
 	AgentIntentGetNotify       AgentIntentName = "get_notifications"
 	AgentIntentStartCall       AgentIntentName = "start_call"

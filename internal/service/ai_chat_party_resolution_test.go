@@ -18,40 +18,40 @@ func partyEvidence(dataset string, data string) aiReadEvidence {
 func TestMainChatBindsRecipientOnlyFromVerifiedDirectoryAlias(t *testing.T) {
 	source := partyEvidence("colleague_search", `{"users":[{"id":38,"username":"t.company","first_name":"Test","last_name":"Company","email":"t.company@a.teamspace.kz"}],"count":1}`)
 	for _, args := range []string{
-		`{"message":"как ты братан","recipient_user_ids":[38]}`,
-		`{"message":"как ты братан","recipient_user_ids":[38],"participant_query":"Test Company"}`,
-		`{"message":"как ты братан"}`,
+		`{"title":"Отчет","priority":"high","due_at":"2026-10-24T23:59:59+05:00","assignee_ids":[38]}`,
+		`{"title":"Отчет","priority":"high","due_at":"2026-10-24T23:59:59+05:00","assignee_ids":[38],"participant_query":"Test Company"}`,
+		`{"title":"Отчет","priority":"high","due_at":"2026-10-24T23:59:59+05:00"}`,
 	} {
-		call := chatAgentCall("send_broadcast", args)
-		got := chatBindDirectoryParty(call, []aiReadEvidence{source}, "Напиши сообщение t.company\nкак ты братан")
+		call := chatAgentCall("create_kanban_task", args)
+		got := chatBindDirectoryParty(call, []aiReadEvidence{source}, "Создай задачу для t.company\nНазвание Отчет, приоритет высокий, срок 2026-10-24")
 		var parsed map[string]any
 		require.NoError(t, json.Unmarshal([]byte(got.Function.Arguments), &parsed))
 		require.Equal(t, "t.company", parsed["participant_query"])
-		require.Equal(t, []any{float64(38)}, parsed["recipient_user_ids"])
-		require.Equal(t, "как ты братан", parsed["message"])
+		require.Equal(t, []any{float64(38)}, parsed["assignee_ids"])
+		require.Equal(t, "Отчет", parsed["title"])
 	}
 	for _, tc := range []struct {
 		name, user string
 		source     aiReadEvidence
 		args       string
 	}{
-		{"CRM contact is not an employee", "t.company", partyEvidence("crm_contacts", `{"users":[{"id":38,"username":"t.company"}]}`), `{"recipient_user_ids":[38]}`},
-		{"different identity", "t.company", source, `{"recipient_user_ids":[39]}`},
-		{"substring is not the login", "t.company2", source, `{"recipient_user_ids":[38]}`},
-		{"email prefix is not the login", "t.company@other.test", source, `{"recipient_user_ids":[38]}`},
-		{"unmentioned name", "Арсен", source, `{"recipient_user_ids":[38]}`},
+		{"CRM contact is not an employee", "t.company", partyEvidence("crm_contacts", `{"users":[{"id":38,"username":"t.company"}]}`), `{"assignee_ids":[38]}`},
+		{"different identity", "t.company", source, `{"assignee_ids":[39]}`},
+		{"substring is not the login", "t.company2", source, `{"assignee_ids":[38]}`},
+		{"email prefix is not the login", "t.company@other.test", source, `{"assignee_ids":[38]}`},
+		{"unmentioned name", "Арсен", source, `{"assignee_ids":[38]}`},
 		{"ambiguous display name", "Test Company", partyEvidence("colleague_search", `{"users":[{"id":38,"first_name":"Test","last_name":"Company"},{"id":39,"first_name":"Test","last_name":"Company"}]}`), `{}`},
 		{"truncated lookup", "t.company", aiReadEvidence{Source: alem.DataSource{Dataset: "colleague_search"}, Result: json.RawMessage(`{"status":"ok","truncated":true,"data":{"users":[{"id":38,"username":"t.company"}]}}`)}, `{}`},
 		{"forbidden lookup", "t.company", aiReadEvidence{Source: alem.DataSource{Dataset: "colleague_search"}, Result: json.RawMessage(`{"status":"forbidden","data":{"users":[{"id":38,"username":"t.company"}]}}`)}, `{}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			call := chatAgentCall("send_broadcast", tc.args)
+			call := chatAgentCall("create_kanban_task", tc.args)
 			require.Equal(t, call, chatBindDirectoryParty(call, []aiReadEvidence{tc.source}, tc.user))
 		})
 	}
 }
 
-func TestMainChatMessageRecipientSurvivesFollowupAndMissingModelReference(t *testing.T) {
+func TestMainChatTaskAssigneeSurvivesFollowupAndMissingModelReference(t *testing.T) {
 	for _, jsonMode := range []bool{false, true} {
 		t.Run(map[bool]string{false: "native", true: "json"}[jsonMode], func(t *testing.T) {
 			ctx, identity := chatTestIdentity(t)
@@ -77,16 +77,16 @@ func TestMainChatMessageRecipientSurvivesFollowupAndMissingModelReference(t *tes
 					}
 					return personalResponse(alem.Message{Role: "assistant", ToolCalls: []alem.ToolCall{personalTool("directory", `{"dataset":"colleague_search","params":{"q":"t.company"}}`)}}), nil
 				}
-				args := `{"message":"как ты братан","recipient_user_ids":[38]}`
+				args := `{"title":"Отчет","priority":"high","due_at":"2026-10-24T23:59:59+05:00","assignee_ids":[38]}`
 				if jsonMode {
-					return personalResponse(alem.Message{Role: "assistant", Content: `{"action":"tool","name":"send_broadcast","arguments":` + args + `}`}), nil
+					return personalResponse(alem.Message{Role: "assistant", Content: `{"action":"tool","name":"create_kanban_task","arguments":` + args + `}`}), nil
 				}
-				return personalResponse(alem.Message{Role: "assistant", ToolCalls: []alem.ToolCall{chatAgentCall("send_broadcast", args)}}), nil
+				return personalResponse(alem.Message{Role: "assistant", ToolCalls: []alem.ToolCall{chatAgentCall("create_kanban_task", args)}}), nil
 			})
 			resp, err := completeWithUserData(ctx, client, reader, identity, alem.ChatCompletionRequest{Messages: []alem.Message{
-				{Role: "user", Content: "Напиши сообщение t.company"},
-				{Role: "assistant", Content: "Какое содержание сообщения?"},
-				{Role: "user", Content: "как ты братан"},
+				{Role: "user", Content: "Создай задачу для t.company"},
+				{Role: "assistant", Content: "Какое название задачи, приоритет и срок?"},
+				{Role: "user", Content: "Название Отчет, приоритет высокий, срок 2026-10-24"},
 			}}, &SmartAgentService{actionStore: store})
 			require.NoError(t, err)
 			require.Equal(t, 2, calls)
@@ -95,7 +95,7 @@ func TestMainChatMessageRecipientSurvivesFollowupAndMissingModelReference(t *tes
 			require.NotNil(t, resp.DataCards[0].Confirmation)
 			require.NotContains(t, resp.Choices[0].Message.Content, "уточните")
 			for _, raw := range store {
-				require.Contains(t, raw, `как ты братан`)
+				require.Contains(t, raw, `Отчет`)
 				require.Contains(t, raw, `t.company`)
 			}
 		})
@@ -115,12 +115,12 @@ func TestMainChatMissingRecipientCanResolveInternally(t *testing.T) {
 	client := completionFunc(func(_ context.Context, req alem.ChatCompletionRequest) (*alem.ChatCompletionResponse, error) {
 		calls++
 		if calls == 1 {
-			return personalResponse(alem.Message{Role: "assistant", ToolCalls: []alem.ToolCall{chatAgentCall("send_broadcast", `{"message":"как ты братан"}`)}}), nil
+			return personalResponse(alem.Message{Role: "assistant", ToolCalls: []alem.ToolCall{chatAgentCall("create_kanban_task", `{"title":"Отчет","priority":"high","due_at":"2026-10-24T23:59:59+05:00"}`)}}), nil
 		}
 		require.Contains(t, req.Messages[len(req.Messages)-1].Content, "action_participant_resolution_required")
-		return personalResponse(alem.Message{Role: "assistant", ToolCalls: []alem.ToolCall{chatAgentCall("send_broadcast", `{"message":"как ты братан","recipient_user_ids":[38],"participant_query":"t.company"}`)}}), nil
+		return personalResponse(alem.Message{Role: "assistant", ToolCalls: []alem.ToolCall{chatAgentCall("create_kanban_task", `{"title":"Отчет","priority":"high","due_at":"2026-10-24T23:59:59+05:00","assignee_ids":[38],"participant_query":"t.company"}`)}}), nil
 	})
-	resp, err := completeWithUserData(ctx, client, &fakePersonalReader{}, identity, alem.ChatCompletionRequest{Messages: []alem.Message{{Role: "user", Content: `Напиши сообщение t.company "как ты братан"`}}}, &SmartAgentService{actionStore: store})
+	resp, err := completeWithUserData(ctx, client, &fakePersonalReader{}, identity, alem.ChatCompletionRequest{Messages: []alem.Message{{Role: "user", Content: `Создай задачу для t.company. Название Отчет, приоритет высокий, срок 2026-10-24`}}}, &SmartAgentService{actionStore: store})
 	require.NoError(t, err)
 	require.Equal(t, 2, calls)
 	require.Len(t, store, 1)

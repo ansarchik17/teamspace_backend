@@ -277,26 +277,6 @@ func (r *E2EERepository) RejectWebPairingSession(
 	return session, nil
 }
 
-func (r *E2EERepository) MarkWebPairingHistorySynced(ctx context.Context, pairingID uuid.UUID) error {
-	_, err := r.db.Exec(ctx, `
-		UPDATE web_pairing_sessions
-		SET status = CASE
-			WHEN status = $2 THEN $2
-			ELSE $3
-		END,
-		    synced_at = COALESCE(synced_at, NOW()),
-		    updated_at = NOW()
-		WHERE id = $1
-		  AND status <> $4
-		  AND status <> $5
-	`, pairingID, domain.WebPairingStatusRedeemed, domain.WebPairingStatusSynced, domain.WebPairingStatusRevoked, domain.WebPairingStatusExpired)
-	if err != nil {
-		return fmt.Errorf("mark web pairing history synced: %w", err)
-	}
-
-	return nil
-}
-
 func (r *E2EERepository) RedeemWebPairingSession(
 	ctx context.Context,
 	pairingID uuid.UUID,
@@ -384,92 +364,6 @@ func (r *E2EERepository) RedeemWebPairingSession(
 	}
 
 	return session, nil
-}
-
-func (r *E2EERepository) AppendHistoryKeysForDevice(
-	ctx context.Context,
-	userID int64,
-	pairingID uuid.UUID,
-	webDeviceID string,
-	items []domain.WebHistorySyncItem,
-) (int, error) {
-	tag, err := r.db.Exec(ctx, `
-		UPDATE web_pairing_sessions
-		SET updated_at = NOW()
-		WHERE id = $1
-		  AND user_id = $2
-		  AND web_device_id = $3
-		  AND status IN ($4, $5, $6)
-	`, pairingID, userID, webDeviceID, domain.WebPairingStatusApproved, domain.WebPairingStatusSynced, domain.WebPairingStatusRedeemed)
-	if err != nil {
-		return 0, fmt.Errorf("validate web pairing session before history sync: %w", err)
-	}
-	if tag.RowsAffected() == 0 {
-		return 0, fmt.Errorf("web pairing session not found or not approved")
-	}
-
-	tx, err := r.db.Begin(ctx)
-	if err != nil {
-		return 0, fmt.Errorf("begin append history keys tx: %w", err)
-	}
-	defer func() {
-		_ = tx.Rollback(ctx)
-	}()
-
-	updatedCount := 0
-	for _, item := range items {
-		tag, execErr := tx.Exec(ctx, `
-			UPDATE messages AS m
-			SET encrypted_keys = jsonb_set(
-					COALESCE(m.encrypted_keys, '{}'::jsonb),
-					ARRAY[$2],
-					to_jsonb($3::text),
-					true
-				),
-				updated_at = NOW()
-			WHERE m.id = $1
-			  AND m.is_deleted = false
-			  AND (
-					EXISTS (
-						SELECT 1
-						FROM conversation_participants cp
-						WHERE cp.conversation_id = m.conversation_id
-						  AND cp.user_id = $4
-						  AND cp.left_at IS NULL
-					)
-					OR EXISTS (
-						SELECT 1
-						FROM group_members gm
-						WHERE gm.group_id = m.conversation_id
-						  AND gm.user_id = $4
-						  AND gm.left_at IS NULL
-					)
-			  )
-		`, item.MessageID, webDeviceID, item.EncryptedKeyForWeb, userID)
-		if execErr != nil {
-			return 0, fmt.Errorf("append history key for message %s: %w", item.MessageID, execErr)
-		}
-		updatedCount += int(tag.RowsAffected())
-	}
-
-	if _, err = tx.Exec(ctx, `
-		UPDATE web_pairing_sessions
-		SET status = CASE
-			WHEN status = $2 THEN $2
-			ELSE $3
-		END,
-		    synced_at = COALESCE(synced_at, NOW()),
-		    updated_at = NOW()
-		WHERE id = $1
-	`, pairingID, domain.WebPairingStatusRedeemed, domain.WebPairingStatusSynced); err != nil {
-		return 0, fmt.Errorf("mark web pairing session synced after history append: %w", err)
-	}
-
-	if err = tx.Commit(ctx); err != nil {
-		return 0, fmt.Errorf("commit append history keys tx: %w", err)
-	}
-
-	return updatedCount, nil
 }
 
 func (r *E2EERepository) UpdateLinkedDeviceAccessMetadata(ctx context.Context, userID int64, deviceID string, meta *domain.ClientMetadata) error {

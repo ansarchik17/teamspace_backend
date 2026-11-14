@@ -119,35 +119,6 @@ func (r *NoteRepository) GetNoteByID(ctx context.Context, userID int64, noteID u
 						FROM note_shares ns
 						WHERE ns.note_id = notes.id AND ns.user_id = $2 AND ns.is_hidden = false
 					)
-					OR EXISTS (
-						SELECT 1
-						FROM messages m
-						WHERE m.is_deleted = false
-						  AND (
-							(m.metadata->>'note_id') = notes.id::text
-							OR (m.metadata->>'noteId') = notes.id::text
-						  )
-						  AND (
-							lower(COALESCE(m.metadata->>'kind', '')) = 'note'
-							OR lower(COALESCE(m.metadata->>'type', '')) = 'note'
-						  )
-						  AND (
-							EXISTS (
-								SELECT 1
-								FROM conversation_participants cp
-								WHERE cp.conversation_id = m.conversation_id
-								  AND cp.user_id = $2
-								  AND cp.left_at IS NULL
-							)
-							OR EXISTS (
-								SELECT 1
-								FROM group_members gm
-								WHERE gm.group_id = m.conversation_id
-								  AND gm.user_id = $2
-								  AND gm.left_at IS NULL
-							)
-						  )
-					)
 				)
 				AND NOT EXISTS (
 					SELECT 1 FROM note_shares ns
@@ -207,35 +178,6 @@ func (r *NoteRepository) ListNotes(ctx context.Context, filter domain.NoteListFi
 						SELECT 1
 						FROM note_shares ns
 						WHERE ns.note_id = notes.id AND ns.user_id = $1 AND ns.is_hidden = false
-					)
-					OR EXISTS (
-						SELECT 1
-						FROM messages m
-						WHERE m.is_deleted = false
-						  AND (
-							(m.metadata->>'note_id') = notes.id::text
-							OR (m.metadata->>'noteId') = notes.id::text
-						  )
-						  AND (
-							lower(COALESCE(m.metadata->>'kind', '')) = 'note'
-							OR lower(COALESCE(m.metadata->>'type', '')) = 'note'
-						  )
-						  AND (
-							EXISTS (
-								SELECT 1
-								FROM conversation_participants cp
-								WHERE cp.conversation_id = m.conversation_id
-								  AND cp.user_id = $1
-								  AND cp.left_at IS NULL
-							)
-							OR EXISTS (
-								SELECT 1
-								FROM group_members gm
-								WHERE gm.group_id = m.conversation_id
-								  AND gm.user_id = $1
-								  AND gm.left_at IS NULL
-							)
-						  )
 					)
 				)
 				AND NOT EXISTS (
@@ -394,35 +336,6 @@ func (r *NoteRepository) ListSyncNotes(ctx context.Context, filter domain.NoteSy
 						SELECT 1
 						FROM note_shares ns
 						WHERE ns.note_id = notes.id AND ns.user_id = $1 AND ns.is_hidden = false
-					)
-					OR EXISTS (
-						SELECT 1
-						FROM messages m
-						WHERE m.is_deleted = false
-						  AND (
-							(m.metadata->>'note_id') = notes.id::text
-							OR (m.metadata->>'noteId') = notes.id::text
-						  )
-						  AND (
-							lower(COALESCE(m.metadata->>'kind', '')) = 'note'
-							OR lower(COALESCE(m.metadata->>'type', '')) = 'note'
-						  )
-						  AND (
-							EXISTS (
-								SELECT 1
-								FROM conversation_participants cp
-								WHERE cp.conversation_id = m.conversation_id
-								  AND cp.user_id = $1
-								  AND cp.left_at IS NULL
-							)
-							OR EXISTS (
-								SELECT 1
-								FROM group_members gm
-								WHERE gm.group_id = m.conversation_id
-								  AND gm.user_id = $1
-								  AND gm.left_at IS NULL
-							)
-						  )
 					)
 				)
 				AND NOT EXISTS (

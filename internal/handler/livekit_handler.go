@@ -27,7 +27,6 @@ import (
 type LiveKitHandler struct {
 	service                *service.LiveKitService
 	notifService           *service.NotificationService
-	groupService           *service.GroupService
 	userRepo               *repository.UserRepository
 	callRepo               *repository.CallHistoryRepository
 	recordingRepo          *repository.CallRecordingRepository
@@ -66,7 +65,6 @@ type privateCallTimeoutJob struct {
 func NewLiveKitHandler(
 	service *service.LiveKitService,
 	notifService *service.NotificationService,
-	groupService *service.GroupService,
 	userRepo *repository.UserRepository,
 	callRepo *repository.CallHistoryRepository,
 	recordingRepo *repository.CallRecordingRepository,
@@ -78,7 +76,6 @@ func NewLiveKitHandler(
 	handler := &LiveKitHandler{
 		service:                service,
 		notifService:           notifService,
-		groupService:           groupService,
 		userRepo:               userRepo,
 		callRepo:               callRepo,
 		recordingRepo:          recordingRepo,
@@ -914,10 +911,6 @@ type StartCallRequest struct {
 	IsVideo  *bool  `json:"is_video,omitempty"`
 }
 
-type StartGroupCallRequest struct {
-	GroupID string `json:"group_id" binding:"required"`
-}
-
 type StartCallResponse struct {
 	Token    string `json:"token"`
 	URL      string `json:"url"`
@@ -1340,128 +1333,6 @@ func (h *LiveKitHandler) StartCall(c *gin.Context) {
 // @Router /calls/assistant/start [post]
 func (h *LiveKitHandler) StartAssistantCall(c *gin.Context) {
 	h.StartCall(c)
-}
-
-// StartGroupCall godoc
-// @Summary Start a group call
-// @Description Initiates a group call and sends push notifications to all group members
-// @Tags calls
-// @Security BearerAuth
-// @Accept json
-// @Produce json
-// @Param request body StartGroupCallRequest true "Start Group Call"
-// @Success 200 {object} StartCallResponse
-// @Failure 400 {object} map[string]interface{}
-// @Failure 500 {object} map[string]interface{}
-// @Router /calls/group/start [post]
-func (h *LiveKitHandler) StartGroupCall(c *gin.Context) {
-	callerID := middleware.MustGetUserID(c)
-	callerName := getUserDisplayName(c, callerID)
-	tokenCtx := h.tokenContextFromRequest(c)
-
-	var req StartGroupCallRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		h.respondError(c, apperrors.Validation("invalid request body"))
-		return
-	}
-
-	groupID, err := uuid.Parse(req.GroupID)
-	if err != nil {
-		h.respondError(c, apperrors.BadRequest("invalid group id"))
-		return
-	}
-
-	// 1. Generate Room Name
-	// We use groupID and timestamp to make it unique per session
-	roomName := fmt.Sprintf("call_group_%s_%d", groupID.String(), time.Now().Unix())
-
-	// 1.1 Create Call History record
-	callID := uuid.New()
-	err = h.callRepo.Create(c.Request.Context(), &domain.CallHistory{
-		CallID:     callID,
-		FromUserID: callerID,
-		ToUserID:   0, // 0 implies group call
-		RoomID:     roomName,
-		CallType:   domain.CallTypeGroup,
-		ChatID:     &req.GroupID,
-		FromName:   &callerName,
-		Status:     "initiated",
-	})
-	if err != nil {
-		h.logger.Error("failed to create group call history", zap.Error(err))
-	}
-
-	// 1.2 Add caller as participant
-	_ = h.callRepo.AddParticipant(c.Request.Context(), &domain.CallParticipant{
-		CallID: callID,
-		UserID: callerID,
-		Status: "joined",
-		Role:   "host",
-	})
-
-	// 2. Generate Token for caller
-	token, err := h.service.GenerateToken(roomName, callerID, callerName, tokenCtx)
-	if err != nil {
-		h.respondError(c, apperrors.InternalWithErr("failed to generate token", err))
-		return
-	}
-	h.logLiveKitRouting("group_call_start", callID.String(), roomName)
-	h.recordCallEvent(c, "group_call_start", callerID, callID.String(), roomName, service.BuildParticipantIdentityForToken(callerID, tokenCtx), "ok", map[string]any{
-		"group_id": req.GroupID,
-	})
-
-	// 3. Get Group Members to notify
-	// We need to fetch group details to get members
-	groupDetails, err := h.groupService.GetGroup(c.Request.Context(), groupID, callerID)
-	if err != nil {
-		h.respondError(c, apperrors.ToAppError(err))
-		return
-	}
-
-	participantIDs := make([]int64, 0, len(groupDetails.Members))
-	for _, m := range groupDetails.Members {
-		participantIDs = append(participantIDs, m.ID)
-		if m.ID == callerID {
-			continue
-		}
-		if err := h.callRepo.AddParticipant(c.Request.Context(), &domain.CallParticipant{
-			CallID: callID,
-			UserID: m.ID,
-			Status: "invited",
-			Role:   "participant",
-		}); err != nil {
-			h.logger.Warn("failed to add invited group participant",
-				zap.String("call_id", callID.String()),
-				zap.Int64("user_id", m.ID),
-				zap.Error(err),
-			)
-		}
-	}
-
-	// 4. Send Push Asynchronously
-	// 4. Send Push Asynchronously
-	go func(bgCtx context.Context, fromID int64, fromName, gID, gName, rName string, parts []int64, cID uuid.UUID) {
-		err := h.notifService.SendGroupCallPush(
-			bgCtx,
-			fromID,
-			fromName,
-			gID,
-			gName,
-			cID,
-			rName,
-			parts,
-		)
-		if err != nil {
-			h.logger.Error("failed to send group call push", zap.Error(err))
-		}
-	}(context.Background(), callerID, callerName, req.GroupID, groupDetails.Name, roomName, participantIDs, callID)
-
-	respondJSON(c, http.StatusOK, StartCallResponse{
-		Token:    token,
-		URL:      h.service.ResolveClientURL(callerID, c.GetString("username"), c.GetString("email")),
-		RoomName: roomName,
-		CallID:   callID.String(),
-	})
 }
 
 // AcceptCall godoc
@@ -3073,13 +2944,6 @@ func (h *LiveKitHandler) InviteToCall(c *gin.Context) {
 			groupIDForWS = parsedGroupID.String()
 		}
 	}
-	if isGroupInvite && groupIDForWS != "" && h.groupService != nil {
-		if parsedGroupID, err := uuid.Parse(groupIDForWS); err == nil {
-			if groupDetails, groupErr := h.groupService.GetGroup(c.Request.Context(), parsedGroupID, callerID); groupErr == nil && groupDetails != nil {
-				groupNameForWS = groupDetails.Name
-			}
-		}
-	}
 
 	// 4. Send Push Notification with the CORRECT CallID
 	go func(bgCtx context.Context, calleeID, fromID int64, fromName string, cID uuid.UUID, rName, chID, groupID, groupName string, groupInvite bool) {
@@ -3248,30 +3112,9 @@ func (h *LiveKitHandler) RejoinCall(c *gin.Context) {
 		if roomName == "" {
 			roomName = req.CallID
 		}
-		if strings.HasPrefix(roomName, "call_group_") {
-			parts := strings.Split(roomName, "_")
-			if len(parts) >= 3 {
-				groupIDStr := parts[2]
-				groupID, err := uuid.Parse(groupIDStr)
-				if err != nil {
-					h.respondError(c, apperrors.BadRequest("invalid group call room name"))
-					return
-				}
-				if _, err = h.groupService.GetGroup(c.Request.Context(), groupID, userID); err != nil {
-					h.respondError(c, apperrors.Forbidden("access denied to group call"))
-					return
-				}
-				callIDStr = roomName
-			} else {
-				h.respondError(c, apperrors.BadRequest("invalid group call room format"))
-				return
-			}
-		} else {
-			callIDStr = strings.TrimSpace(req.CallID)
-			if callIDStr == "" {
-				callIDStr = roomName
-			}
-		}
+		// Rejoining requires a persisted call and verified participants.
+		h.respondError(c, apperrors.NotFound("call"))
+		return
 	}
 
 	participants, err := h.service.ListParticipants(c.Request.Context(), roomName)

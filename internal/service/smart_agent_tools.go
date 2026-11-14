@@ -166,21 +166,6 @@ func getToolsSchema() []LLMTool {
 		{
 			Type: "function",
 			Function: LLMFunction{
-				Name:        "send_broadcast",
-				Description: "Отправить сообщение нескольким пользователям.",
-				Parameters: map[string]interface{}{
-					"type": "object",
-					"properties": map[string]interface{}{
-						"message":            map[string]string{"type": "string"},
-						"recipient_user_ids": map[string]interface{}{"type": "array", "items": map[string]string{"type": "integer"}},
-					},
-					"required": []string{"message", "recipient_user_ids"},
-				},
-			},
-		},
-		{
-			Type: "function",
-			Function: LLMFunction{
 				Name:        "create_online_meeting",
 				Description: "Создать онлайн видео-звонок/совещание через внешний планировщик.",
 				Parameters: map[string]interface{}{
@@ -305,9 +290,6 @@ func (s *SmartAgentService) executeTool(ctx context.Context, executorUserID int6
 
 	case "get_kanban_boards":
 		return s.toolGetKanbanBoards(ctx, executorUserID)
-
-	case "send_broadcast":
-		return s.toolSendBroadcast(ctx, executorUserID, args)
 
 	default:
 		return i18n.UIMessage(ctx, "Unknown tool: %s", name), nil
@@ -926,24 +908,6 @@ func (s *SmartAgentService) toolGetKanbanBoards(ctx context.Context, userID int6
 	}
 
 	return strings.Join(results, "\n"), widget
-}
-
-func (s *SmartAgentService) toolSendBroadcast(ctx context.Context, senderID int64, args map[string]interface{}) (string, *SmartAgentWidget) {
-	message, _ := args["message"].(string)
-	recipientIDs := getInt64Array(args["recipient_user_ids"])
-
-	req := BroadcastMessageRequest{
-		RecipientUserIDs: recipientIDs,
-		Content:          message,
-		MessageType:      "text",
-	}
-
-	resp, err := s.chatService.BroadcastMessage(ctx, senderID, &req)
-	if err != nil {
-		return i18n.TextContext(ctx, "error.INTERNAL_ERROR", nil), nil
-	}
-
-	return i18n.UIMessage(ctx, "Broadcast sent. Success: %d, Fail: %d", resp.SuccessCount, resp.FailureCount), nil
 }
 
 func (s *SmartAgentService) toolWebSearch(ctx context.Context, query string) (string, *SmartAgentWidget) {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"sync"
 	"time"
 
@@ -23,18 +22,9 @@ type Hub struct {
 	unregister chan *Client
 	logger     *zap.Logger
 	telemetry  *telemetry.CallTelemetry
-	// ParticipantResolver finds participants for a conversation/group
-	ParticipantResolver func(ctx context.Context, conversationID uuid.UUID) ([]int64, error)
 	// KanbanTaskMovedResolver validates a persisted move and returns board recipients.
 	KanbanTaskMovedResolver func(ctx context.Context, userID int64, boardID, taskID, fromColumnID, toColumnID uuid.UUID) ([]int64, error)
 	userUpdater             UserStatusUpdater
-	// SyncHandler handles message synchronization requests
-	SyncHandler MessageSyncHandler
-}
-
-// MessageSyncHandler defines the interface for handling sync requests
-type MessageSyncHandler interface {
-	HandleReconnection(ctx context.Context, userID int64, deviceID string, lastKnownSequence int64, limit int) (interface{}, error)
 }
 
 type UserStatusUpdater interface {
@@ -43,36 +33,25 @@ type UserStatusUpdater interface {
 
 // Message represents a WebSocket message
 type Message struct {
-	ID                *uuid.UUID        `json:"id,omitempty"`
-	Type              string            `json:"type"` // "message", "typing", "read", "sync_request", "sync_response", etc.
-	From              int64             `json:"from"`
-	To                int64             `json:"to,omitempty"`
-	ConversationID    *uuid.UUID        `json:"conversation_id,omitempty"`
-	MessageID         *uuid.UUID        `json:"message_id,omitempty"`
-	BoardID           *uuid.UUID        `json:"board_id,omitempty"`
-	TaskID            *uuid.UUID        `json:"task_id,omitempty"`
-	ColumnID          *uuid.UUID        `json:"column_id,omitempty"`
-	FromColumnID      *uuid.UUID        `json:"from_column_id,omitempty"`
-	ToColumnID        *uuid.UUID        `json:"to_column_id,omitempty"`
-	Title             string            `json:"title,omitempty"`
-	Body              string            `json:"body,omitempty"`
-	Category          string            `json:"category,omitempty"`
-	IsTransient       bool              `json:"is_transient,omitempty"`
-	Content           interface{}       `json:"content,omitempty"`
-	Metadata          map[string]string `json:"metadata,omitempty"`
-	IsMention         bool              `json:"is_mention,omitempty"`
-	Timestamp         int64             `json:"timestamp"`
-	ExcludeSessionKey string            `json:"-"`
-	// Sync-specific fields
-	DeviceID     string `json:"device_id,omitempty"`
-	LastSequence int64  `json:"last_sequence,omitempty"`
-	SyncLimit    int    `json:"sync_limit,omitempty"`
-}
+	ID   *uuid.UUID `json:"id,omitempty"`
+	Type string     `json:"type"` // Notification, call, presence, or kanban event type.
+	From int64      `json:"from"`
+	To   int64      `json:"to,omitempty"`
 
-type messageNotificationInfo interface {
-	GetIDs() (uuid.UUID, uuid.UUID)
-	GetSenderDisplayName() string
-	GetMessageType() string
+	BoardID      *uuid.UUID        `json:"board_id,omitempty"`
+	TaskID       *uuid.UUID        `json:"task_id,omitempty"`
+	ColumnID     *uuid.UUID        `json:"column_id,omitempty"`
+	FromColumnID *uuid.UUID        `json:"from_column_id,omitempty"`
+	ToColumnID   *uuid.UUID        `json:"to_column_id,omitempty"`
+	Title        string            `json:"title,omitempty"`
+	Body         string            `json:"body,omitempty"`
+	Category     string            `json:"category,omitempty"`
+	IsTransient  bool              `json:"is_transient,omitempty"`
+	Content      interface{}       `json:"content,omitempty"`
+	Metadata     map[string]string `json:"metadata,omitempty"`
+
+	Timestamp         int64  `json:"timestamp"`
+	ExcludeSessionKey string `json:"-"`
 }
 
 // NewHub creates a new WebSocket hub
@@ -231,49 +210,6 @@ func (h *Hub) broadcastMessage(message *Message) {
 			}
 		}
 		return
-	}
-
-	// If we have a conversation ID and a resolver, send to participants
-	if message.ConversationID != nil && h.ParticipantResolver != nil {
-		// Use a background context or one with timeout
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		participants, err := h.ParticipantResolver(ctx, *message.ConversationID)
-		cancel()
-
-		if err == nil {
-			for _, userID := range participants {
-				// Don't echo back to sender (usually)
-				if userID == message.From {
-					continue
-				}
-
-				if userClients, exists := h.clients[userID]; exists {
-					for client := range userClients {
-						if shouldSkipClient(client, message) {
-							continue
-						}
-
-						select {
-						case client.send <- message:
-						default:
-							h.logger.Warn("Client send buffer full during group broadcast",
-								zap.Int64("user_id", userID),
-							)
-							h.recordBufferFull("group_broadcast", userID, message.Type, len(client.send), cap(client.send))
-						}
-					}
-				}
-			}
-			return
-		} else {
-			h.logger.Warn("Failed to resolve participants for broadcast",
-				zap.String("conversation_id", message.ConversationID.String()),
-				zap.Error(err),
-			)
-			// Fallthrough to global broadcast? NO.
-			// If resolving failed, we probably shouldn't broadcast to EVERYONE as fallback.
-			return
-		}
 	}
 
 	// Broadcast to all connected clients (fallback / system messages)
@@ -492,175 +428,6 @@ func (h *Hub) GetClientCount() int {
 	return count
 }
 
-// SendMessageNotification sends a new message notification with full message data
-func (h *Hub) SendMessageNotification(toUserID int64, messageView interface{}, isMention bool) int {
-	return h.sendMessageNotification(toUserID, messageView, isMention, "")
-}
-
-func (h *Hub) SendMessageNotificationExceptSession(toUserID int64, messageView interface{}, isMention bool, excludeSessionKey string) int {
-	return h.sendMessageNotification(toUserID, messageView, isMention, excludeSessionKey)
-}
-
-func (h *Hub) sendMessageNotification(toUserID int64, messageView interface{}, isMention bool, excludeSessionKey string) int {
-	// Мы приводим интерфейс к конкретному типу, чтобы достать ID для верхнего уровня
-	// Это поможет мобильным разработчикам находить ID сообщения без глубокого парсинга
-	var msgID *uuid.UUID
-	var convID *uuid.UUID
-
-	// Попробуем достать ID если это правильный тип (MessageView)
-	var senderName string
-	var messageType string
-	if mv, ok := messageView.(messageNotificationInfo); ok {
-		mID, cID := mv.GetIDs()
-		msgID = &mID
-		convID = &cID
-		senderName = mv.GetSenderDisplayName()
-		messageType = mv.GetMessageType()
-	}
-
-	title, body := buildMessageNotificationText(senderName, messageType, isMention)
-	message := &Message{
-		Type:              "new_message",
-		To:                toUserID,
-		MessageID:         msgID,
-		ConversationID:    convID,
-		Title:             title,
-		Body:              body,
-		Category:          "chat",
-		Content:           messageView,
-		IsMention:         isMention,
-		Timestamp:         h.getCurrentTimestamp(),
-		ExcludeSessionKey: excludeSessionKey,
-	}
-
-	return h.SendToUser(toUserID, message)
-}
-
-// SendTypingNotification sends typing indicator
-func (h *Hub) SendTypingNotification(toUserID, fromUserID int64, conversationID uuid.UUID, isTyping bool) {
-	title, body := buildTypingNotificationText(fromUserID, isTyping)
-	message := &Message{
-		Type:           "typing",
-		From:           fromUserID,
-		To:             toUserID,
-		ConversationID: &conversationID,
-		Title:          title,
-		Body:           body,
-		Category:       "typing",
-		IsTransient:    true,
-		Content: map[string]interface{}{
-			"is_typing":            isTyping,
-			"display_title":        title,
-			"display_content":      body,
-			"is_transient":         true,
-			"should_show_in_inbox": false,
-		},
-		Timestamp: h.getCurrentTimestamp(),
-	}
-
-	h.SendToUser(toUserID, message)
-}
-
-// SendReadReceipt sends read receipt notification
-func (h *Hub) SendReadReceipt(toUserID, fromUserID int64, messageID, conversationID uuid.UUID, readCount int) {
-	h.SendToUser(toUserID, &Message{
-		Type:           "read_receipt",
-		From:           fromUserID,
-		To:             toUserID,
-		MessageID:      &messageID,
-		ConversationID: &conversationID,
-		Content: map[string]interface{}{
-			"read_by_count": readCount,
-			"is_read":       readCount > 0,
-		},
-		Timestamp: h.getCurrentTimestamp(),
-	})
-}
-
-// SendDeliveryReceipt sends delivery receipt notification
-func (h *Hub) SendDeliveryReceipt(toUserID, fromUserID int64, messageID, conversationID uuid.UUID, deliveredCount int) {
-	h.SendToUser(toUserID, &Message{
-		Type:           "delivery_receipt",
-		From:           fromUserID,
-		To:             toUserID,
-		MessageID:      &messageID,
-		ConversationID: &conversationID,
-		Content: map[string]interface{}{
-			"delivered_count": deliveredCount,
-		},
-		Timestamp: h.getCurrentTimestamp(),
-	})
-}
-
-// SendUnreadCountUpdated sends unread count update for multi-device badge sync
-func (h *Hub) SendUnreadCountUpdated(toUserID int64, conversationID uuid.UUID, unreadCount int) {
-	h.SendToUser(toUserID, &Message{
-		Type:           "unread_count_updated",
-		To:             toUserID,
-		ConversationID: &conversationID,
-		Content: map[string]interface{}{
-			"conversation_id": conversationID,
-			"unread_count":    unreadCount,
-		},
-		Timestamp: h.getCurrentTimestamp(),
-	})
-}
-
-func (h *Hub) SendMessageEditNotification(toUserID int64, messageView interface{}) {
-	message := &Message{
-		Type:      "message_edited",
-		To:        toUserID,
-		Content:   messageView, // Full updated MessageView including reply_to, sender info, etc.
-		Timestamp: h.getCurrentTimestamp(),
-	}
-
-	h.SendToUser(toUserID, message)
-}
-
-func (h *Hub) SendMessageDeleteNotification(toUserID int64, conversationID, messageID uuid.UUID, isForEveryone bool, newLastMessage interface{}) {
-	message := &Message{
-		Type:           "message_deleted",
-		To:             toUserID,
-		ConversationID: &conversationID,
-		MessageID:      &messageID,
-		Content: map[string]interface{}{
-			"is_for_everyone":  isForEveryone,
-			"new_last_message": newLastMessage,
-		},
-		Timestamp: h.getCurrentTimestamp(),
-	}
-
-	h.SendToUser(toUserID, message)
-}
-
-func (h *Hub) SendChatHiddenNotification(toUserID int64, conversationID uuid.UUID, chatType string) {
-	message := &Message{
-		Type:           "chat_hidden",
-		To:             toUserID,
-		ConversationID: &conversationID,
-		Content: map[string]interface{}{
-			"chat_type": chatType,
-		},
-		Timestamp: h.getCurrentTimestamp(),
-	}
-
-	h.SendToUser(toUserID, message)
-}
-
-func (h *Hub) SendChatDeletedNotification(toUserID int64, conversationID uuid.UUID, chatType string) {
-	message := &Message{
-		Type:           "chat_deleted",
-		To:             toUserID,
-		ConversationID: &conversationID,
-		Content: map[string]interface{}{
-			"chat_type": chatType,
-		},
-		Timestamp: h.getCurrentTimestamp(),
-	}
-
-	h.SendToUser(toUserID, message)
-}
-
 func (h *Hub) getCurrentTimestamp() int64 {
 	return time.Now().Unix()
 }
@@ -754,26 +521,6 @@ func (h *Hub) SendUserStatusToInterested(userID int64, status string, interested
 	}
 }
 
-func buildMessageNotificationText(senderName, messageType string, isMention bool) (string, string) {
-	senderName = strings.TrimSpace(senderName)
-	if senderName == "" {
-		senderName = "Пользователь"
-	}
-
-	preview := messagePreviewText(messageType)
-	if isMention {
-		return "Вас упомянули", fmt.Sprintf("%s: %s", senderName, preview)
-	}
-	return fmt.Sprintf("Сообщение от %s", senderName), preview
-}
-
-func buildTypingNotificationText(userID int64, isTyping bool) (string, string) {
-	if !isTyping {
-		return "Набор текста завершён", fmt.Sprintf("Пользователь #%d перестал печатать", userID)
-	}
-	return "Печатает сообщение", fmt.Sprintf("Пользователь #%d набирает текст", userID)
-}
-
 func buildStatusNotificationText(userID int64, status string) (string, string) {
 	switch status {
 	case "online":
@@ -785,53 +532,12 @@ func buildStatusNotificationText(userID int64, status string) (string, string) {
 	}
 }
 
-func messagePreviewText(messageType string) string {
-	switch messageType {
-	case "text", "":
-		return "Новое текстовое сообщение"
-	case "image":
-		return "Новое фото"
-	case "file":
-		return "Новый файл"
-	case "audio":
-		return "Новое аудио"
-	case "video":
-		return "Новое видео"
-	case "voice":
-		return "Голосовое сообщение"
-	case "video_message":
-		return "Видеосообщение"
-	default:
-		return "Новое сообщение"
-	}
-}
-
 func enrichRealtimeMessage(message *Message) {
 	if message == nil {
 		return
 	}
 
 	switch message.Type {
-	case "typing":
-		if message.Category == "" {
-			message.Category = "typing"
-		}
-		message.IsTransient = true
-		isTyping := true
-		if content, ok := message.Content.(map[string]interface{}); ok {
-			if raw, ok := content["is_typing"].(bool); ok {
-				isTyping = raw
-			}
-		}
-		title, body := buildTypingNotificationText(message.From, isTyping)
-		if message.Title == "" {
-			message.Title = title
-		}
-		if message.Body == "" {
-			message.Body = body
-		}
-		message.Content = mergeContentDisplayFields(message.Content, message.Title, message.Body, true)
-
 	case "user_status":
 		if message.Category == "" {
 			message.Category = "user_status"
@@ -886,88 +592,4 @@ func (h *Hub) recordBufferFull(scope string, userID int64, messageType string, q
 		"queue_len":    queueLen,
 		"queue_cap":    queueCap,
 	})
-}
-
-// ─── Channel WebSocket events ────────────────────────────────────────────────
-
-// Channel event type constants – use these in channel_service.go when broadcasting
-const (
-	// EventNewChannelPost is emitted to all online subscribers when a new post is published
-	EventNewChannelPost = "new_channel_post"
-	// EventChannelPostEdited is emitted when a post is edited
-	EventChannelPostEdited = "channel_post_edited"
-	// EventChannelPostDeleted is emitted when a post is deleted
-	EventChannelPostDeleted = "channel_post_deleted"
-	// EventChannelPostViewed is emitted when a view is recorded (admin dashboard use)
-	EventChannelPostViewed = "channel_post_viewed"
-	// EventChannelPostReaction is emitted when a reaction is added/removed
-	EventChannelPostReaction = "channel_post_reaction"
-)
-
-// ─── Message Synchronization ─────────────────────────────────────────────────
-
-// HandleSyncRequest processes a sync request from a reconnected client
-func (h *Hub) HandleSyncRequest(client *Client, msg *Message) {
-	if h.SyncHandler == nil {
-		h.logger.Warn("Sync handler not configured")
-		client.enqueue(&Message{
-			Type:      "sync_error",
-			To:        client.UserID,
-			Content:   map[string]interface{}{"error": "sync not available"},
-			Timestamp: time.Now().Unix(),
-		})
-		return
-	}
-
-	// Extract device ID and last sequence from the request
-	deviceID := msg.DeviceID
-	if deviceID == "" {
-		deviceID = client.SessionKey // fallback to session key as device identifier
-	}
-
-	lastSequence := msg.LastSequence
-	limit := msg.SyncLimit
-	if limit <= 0 {
-		limit = 100
-	}
-
-	h.logger.Info("Processing sync request",
-		zap.Int64("user_id", client.UserID),
-		zap.String("device_id", deviceID),
-		zap.Int64("last_sequence", lastSequence),
-		zap.Int("limit", limit),
-	)
-
-	// Use background context with timeout for sync operation
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	// Call the sync handler
-	syncResponse, err := h.SyncHandler.HandleReconnection(ctx, client.UserID, deviceID, lastSequence, limit)
-	if err != nil {
-		h.logger.Error("Failed to handle sync request",
-			zap.Error(err),
-			zap.Int64("user_id", client.UserID),
-		)
-		client.enqueue(&Message{
-			Type:      "sync_error",
-			To:        client.UserID,
-			Content:   map[string]interface{}{"error": "message synchronization failed"},
-			Timestamp: time.Now().Unix(),
-		})
-		return
-	}
-
-	// Send sync response back to the client
-	client.enqueue(&Message{
-		Type:      "sync_response",
-		To:        client.UserID,
-		Content:   syncResponse,
-		Timestamp: time.Now().Unix(),
-	})
-
-	h.logger.Info("Sync request completed",
-		zap.Int64("user_id", client.UserID),
-		zap.String("device_id", deviceID),
-	)
 }

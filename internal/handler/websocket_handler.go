@@ -38,7 +38,7 @@ func NewWebSocketHandler(hub *ws.Hub, statusService *service.StatusService, logg
 
 // HandleConnection handles WebSocket connection
 // @Summary WebSocket connection
-// @Description Establish WebSocket connection for real-time messaging
+// @Description Establish WebSocket connection for notifications, calls, presence and kanban updates
 // @Tags websocket
 // @Security BearerAuth
 // @Param token query string false "Access token (alternative to header)"

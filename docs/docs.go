@@ -17,1813 +17,6 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/contacts/{user_id}/offboarding": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "contacts"
-                ],
-                "summary": "Read employee offboarding result",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Employee ID",
-                        "name": "user_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/domain.ContactOffboardingResult"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/apperrors.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/apperrors.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "contacts"
-                ],
-                "summary": "Offboard employee and hand work to a successor",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Employee ID",
-                        "name": "user_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "boolean",
-                        "default": true,
-                        "description": "Preview and roll back (default true)",
-                        "name": "dry_run",
-                        "in": "query"
-                    },
-                    {
-                        "description": "Successor and reason",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/domain.ContactOffboardingRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/domain.ContactOffboardingResult"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/apperrors.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "$ref": "#/definitions/apperrors.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/apperrors.ErrorResponse"
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "$ref": "#/definitions/apperrors.ErrorResponse"
-                        }
-                    },
-                    "507": {
-                        "description": "Insufficient Storage",
-                        "schema": {
-                            "$ref": "#/definitions/apperrors.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-    "/contacts/import": {
-        "post": {
-            "security": [
-                {
-                    "BearerAuth": []
-                }
-            ],
-            "consumes": [
-                "multipart/form-data"
-            ],
-            "produces": [
-                "application/json"
-            ],
-            "tags": [
-                "contacts"
-            ],
-            "summary": "Import employees from CSV or XLSX",
-            "parameters": [
-                {
-                    "type": "file",
-                    "description": "UTF-8 CSV or single-sheet XLSX, up to 10 MiB/5000 employees",
-                    "name": "file",
-                    "in": "formData",
-                    "required": true
-                },
-                {
-                    "type": "boolean",
-                    "description": "Validate without applying; default true",
-                    "name": "dry_run",
-                    "in": "query"
-                }
-            ],
-            "responses": {
-                "200": {
-                    "description": "OK",
-                    "schema": {
-                        "$ref": "#/definitions/domain.ContactImportResult"
-                    }
-                },
-                "400": {
-                    "description": "Bad Request",
-                    "schema": {
-                        "$ref": "#/definitions/apperrors.ErrorResponse"
-                    }
-                },
-                "403": {
-                    "description": "Forbidden",
-                    "schema": {
-                        "$ref": "#/definitions/apperrors.ErrorResponse"
-                    }
-                }
-            }
-        }
-    },
-    "/contacts/directory": {
-        "get": {
-            "security": [
-                {
-                    "BearerAuth": []
-                }
-            ],
-            "produces": [
-                "application/json"
-            ],
-            "tags": [
-                "contacts"
-            ],
-            "summary": "Get LDAP/AD directory connector",
-            "responses": {
-                "200": {
-                    "description": "OK",
-                    "schema": {
-                        "$ref": "#/definitions/domain.DirectoryConfig"
-                    }
-                }
-            }
-        },
-        "put": {
-            "security": [
-                {
-                    "BearerAuth": []
-                }
-            ],
-            "consumes": [
-                "application/json"
-            ],
-            "produces": [
-                "application/json"
-            ],
-            "tags": [
-                "contacts"
-            ],
-            "summary": "Configure LDAP/AD employee directory",
-            "parameters": [
-                {
-                    "description": "Connector; omitted bind_password preserves the existing secret",
-                    "name": "request",
-                    "in": "body",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/domain.DirectoryConfigRequest"
-                    }
-                }
-            ],
-            "responses": {
-                "200": {
-                    "description": "OK",
-                    "schema": {
-                        "$ref": "#/definitions/domain.DirectoryConfig"
-                    }
-                }
-            }
-        }
-    },
-    "/contacts/directory/sync": {
-        "post": {
-            "security": [
-                {
-                    "BearerAuth": []
-                }
-            ],
-            "consumes": [
-                "application/json"
-            ],
-            "produces": [
-                "application/json"
-            ],
-            "tags": [
-                "contacts"
-            ],
-            "summary": "Synchronize employee profiles from LDAP/AD",
-            "parameters": [
-                {
-                    "description": "dry_run defaults to true; false applies",
-                    "name": "request",
-                    "in": "body",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/domain.DirectorySyncRequest"
-                    }
-                }
-            ],
-            "responses": {
-                "200": {
-                    "description": "OK",
-                    "schema": {
-                        "$ref": "#/definitions/domain.ContactImportResult"
-                    }
-                }
-            }
-        }
-    },
-    "/contacts/{user_id}/actions": {
-        "get": {
-            "security": [
-                {
-                    "BearerAuth": []
-                }
-            ],
-            "description": "Read-only navigation data: chat peer, safe mailto URL and meeting composer defaults. Also included in the employee profile.",
-            "produces": [
-                "application/json"
-            ],
-            "tags": [
-                "contacts"
-            ],
-            "summary": "Get employee quick actions",
-            "parameters": [
-                {
-                    "type": "integer",
-                    "description": "Employee ID",
-                    "name": "user_id",
-                    "in": "path",
-                    "required": true
-                }
-            ],
-            "responses": {
-                "200": {
-                    "description": "OK",
-                    "schema": {
-                        "$ref": "#/definitions/domain.ContactActions"
-                    }
-                },
-                "400": {
-                    "description": "Bad Request",
-                    "schema": {
-                        "$ref": "#/definitions/apperrors.ErrorResponse"
-                    }
-                },
-                "404": {
-                    "description": "Not Found",
-                    "schema": {
-                        "$ref": "#/definitions/apperrors.ErrorResponse"
-                    }
-                }
-            }
-        }
-    },
-    "/organizations/current/tree": {
-        "get": {
-            "security": [
-                {
-                    "BearerAuth": []
-                }
-            ],
-            "produces": [
-                "application/json"
-            ],
-            "tags": [
-                "organizations"
-            ],
-            "summary": "Get company organization tree",
-            "responses": {
-                "200": {
-                    "description": "OK",
-                    "schema": {
-                        "$ref": "#/definitions/domain.OrganizationTree"
-                    }
-                },
-                "404": {
-                    "description": "Not Found",
-                    "schema": {
-                        "$ref": "#/definitions/apperrors.ErrorResponse"
-                    }
-                },
-                "409": {
-                    "description": "Conflict",
-                    "schema": {
-                        "$ref": "#/definitions/apperrors.ErrorResponse"
-                    }
-                }
-            }
-        }
-    },
-    "/contacts/{user_id}": {
-        "get": {
-            "security": [
-                {
-                    "BearerAuth": []
-                }
-            ],
-            "produces": [
-                "application/json"
-            ],
-            "tags": [
-                "contacts"
-            ],
-            "summary": "Get employee profile",
-            "parameters": [
-                {
-                    "type": "integer",
-                    "description": "Employee ID",
-                    "name": "user_id",
-                    "in": "path",
-                    "required": true
-                }
-            ],
-            "responses": {
-                "200": {
-                    "description": "OK",
-                    "schema": {
-                        "$ref": "#/definitions/domain.ContactProfile"
-                    }
-                },
-                "400": {
-                    "description": "Bad Request",
-                    "schema": {
-                        "$ref": "#/definitions/apperrors.ErrorResponse"
-                    }
-                },
-                "404": {
-                    "description": "Not Found",
-                    "schema": {
-                        "$ref": "#/definitions/apperrors.ErrorResponse"
-                    }
-                }
-            }
-        },
-        "patch": {
-            "security": [
-                {
-                    "BearerAuth": []
-                }
-            ],
-            "consumes": [
-                "application/json"
-            ],
-            "produces": [
-                "application/json"
-            ],
-            "tags": [
-                "contacts"
-            ],
-            "summary": "Update own employee contacts",
-            "parameters": [
-                {
-                    "type": "integer",
-                    "description": "Own employee ID",
-                    "name": "user_id",
-                    "in": "path",
-                    "required": true
-                },
-                {
-                    "description": "Contact details",
-                    "name": "request",
-                    "in": "body",
-                    "required": true,
-                    "schema": {
-                        "$ref": "#/definitions/domain.UpdateContactRequest"
-                    }
-                }
-            ],
-            "responses": {
-                "204": {
-                    "description": "No Content"
-                },
-                "400": {
-                    "description": "Bad Request",
-                    "schema": {
-                        "$ref": "#/definitions/apperrors.ErrorResponse"
-                    }
-                },
-                "403": {
-                    "description": "Forbidden",
-                    "schema": {
-                        "$ref": "#/definitions/apperrors.ErrorResponse"
-                    }
-                },
-                "404": {
-                    "description": "Not Found",
-                    "schema": {
-                        "$ref": "#/definitions/apperrors.ErrorResponse"
-                    }
-                }
-            }
-        }
-    },
-    "/contacts/{user_id}/avatar": {
-        "post": {
-            "security": [
-                {
-                    "BearerAuth": []
-                }
-            ],
-            "consumes": [
-                "multipart/form-data"
-            ],
-            "produces": [
-                "application/json"
-            ],
-            "tags": [
-                "contacts"
-            ],
-            "summary": "Upload own employee avatar",
-            "parameters": [
-                {
-                    "type": "integer",
-                    "description": "Own employee ID",
-                    "name": "user_id",
-                    "in": "path",
-                    "required": true
-                },
-                {
-                    "type": "file",
-                    "description": "JPEG/PNG, at most 5 MiB and 2048x2048",
-                    "name": "file",
-                    "in": "formData",
-                    "required": true
-                }
-            ],
-            "responses": {
-                "200": {
-                    "description": "OK",
-                    "schema": {
-                        "$ref": "#/definitions/domain.ContactProfile"
-                    }
-                },
-                "400": {
-                    "description": "Bad Request",
-                    "schema": {
-                        "$ref": "#/definitions/apperrors.ErrorResponse"
-                    }
-                },
-                "403": {
-                    "description": "Forbidden",
-                    "schema": {
-                        "$ref": "#/definitions/apperrors.ErrorResponse"
-                    }
-                }
-            }
-        }
-    },
-    "/contacts/{user_id}/reports": {
-        "get": {
-            "security": [
-                {
-                    "BearerAuth": []
-                }
-            ],
-            "produces": [
-                "application/json"
-            ],
-            "tags": [
-                "contacts"
-            ],
-            "summary": "List employee direct reports",
-            "parameters": [
-                {
-                    "type": "integer",
-                    "description": "Manager employee ID",
-                    "name": "user_id",
-                    "in": "path",
-                    "required": true
-                },
-                {
-                    "type": "integer",
-                    "description": "Page size 1 to 100, default 50",
-                    "name": "limit",
-                    "in": "query"
-                },
-                {
-                    "type": "integer",
-                    "description": "Non-negative offset",
-                    "name": "offset",
-                    "in": "query"
-                }
-            ],
-            "responses": {
-                "200": {
-                    "description": "OK",
-                    "schema": {
-                        "$ref": "#/definitions/domain.ContactList"
-                    }
-                }
-            }
-        }
-    },
-    "/contacts": {
-        "get": {
-            "security": [
-                {
-                    "BearerAuth": []
-                }
-            ],
-            "produces": [
-                "application/json"
-            ],
-            "tags": [
-                "contacts"
-            ],
-            "summary": "Search employee directory",
-            "parameters": [
-                {
-                    "type": "string",
-                    "description": "Literal case-insensitive substring of name, email or username (max 200 characters)",
-                    "name": "q",
-                    "in": "query"
-                },
-                {
-                    "type": "string",
-                    "description": "Exact organization unit UUID (without descendants)",
-                    "name": "unit_id",
-                    "in": "query"
-                },
-                {
-                    "type": "string",
-                    "description": "Exact case-insensitive job title (max 255 characters)",
-                    "name": "position",
-                    "in": "query"
-                },
-                {
-                    "type": "integer",
-                    "description": "Page size, 1 to 100; default 50",
-                    "name": "limit",
-                    "in": "query"
-                },
-                {
-                    "type": "integer",
-                    "description": "Non-negative page offset",
-                    "name": "offset",
-                    "in": "query"
-                }
-            ],
-            "responses": {
-                "200": {
-                    "description": "OK",
-                    "schema": {
-                        "$ref": "#/definitions/domain.ContactList"
-                    }
-                },
-                "400": {
-                    "description": "Bad Request",
-                    "schema": {
-                        "$ref": "#/definitions/apperrors.AppError"
-                    }
-                },
-                "404": {
-                    "description": "Not Found",
-                    "schema": {
-                        "$ref": "#/definitions/apperrors.AppError"
-                    }
-                }
-            }
-        }
-    },
-    "/contacts/filters": {
-        "get": {
-            "security": [
-                {
-                    "BearerAuth": []
-                }
-            ],
-            "produces": [
-                "application/json"
-            ],
-            "tags": [
-                "contacts"
-            ],
-            "summary": "Get employee directory filters",
-            "responses": {
-                "200": {
-                    "description": "OK",
-                    "schema": {
-                        "$ref": "#/definitions/domain.ContactFilters"
-                    }
-                },
-                "404": {
-                    "description": "Not Found",
-                    "schema": {
-                        "$ref": "#/definitions/apperrors.AppError"
-                    }
-                }
-            }
-        }
-    },
-        "/docs/import": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "docs"
-                ],
-                "summary": "Import an office document or PDF into Drive without changing its bytes",
-                "parameters": [
-                    {
-                        "type": "file",
-                        "description": "DOC/DOCX/XLS/XLSX/PPT/PPTX/PDF; maximum 100 MiB",
-                        "name": "file",
-                        "in": "formData",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Target folder UUID",
-                        "name": "folder_id",
-                        "in": "formData"
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/domain.DriveFile"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "413": {
-                        "description": "Request Entity Too Large",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "415": {
-                        "description": "Unsupported Media Type",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "507": {
-                        "description": "Insufficient Storage",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/docs/files/{id}/export": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Conversion supports DOC to DOCX, XLS to XLSX, PPT to PPTX and office formats to PDF. PDF to editable formats and cross-family conversions are unsupported. Does not include unsaved editor changes or modify the source. Requires viewer access. Returns 202 while converting; repeat with the returned version.",
-                "produces": [
-                    "application/octet-stream"
-                ],
-                "tags": [
-                    "docs"
-                ],
-                "summary": "Export a saved document revision in its original format, OOXML or PDF",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Drive file UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "doc/docx/xls/xlsx/ppt/pptx/pdf; see conversion matrix",
-                        "name": "format",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Saved revision (default current)",
-                        "name": "version",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "file"
-                        },
-                        "headers": {
-                            "X-Document-Version": {
-                                "type": "integer",
-                                "description": "Exported saved revision"
-                            }
-                        }
-                    },
-                    "202": {
-                        "description": "Accepted",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "413": {
-                        "description": "Request Entity Too Large",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "415": {
-                        "description": "Unsupported Media Type",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "422": {
-                        "description": "Unprocessable Entity",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "502": {
-                        "description": "Bad Gateway",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "503": {
-                        "description": "Service Unavailable",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "504": {
-                        "description": "Gateway Timeout",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/docs/files/{id}/save-state": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Saved time refers to the Drive revision, not unsaved edits or DocumentServer connection health. Failures belong to the current revision and session only.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "docs"
-                ],
-                "summary": "Get last durable document checkpoint and save failure",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Drive file UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/domain.OfficeSaveState"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/docs/files/{id}/recover": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Explicitly abandons unsaved changes in the old editor session. Appends a new revision and rotates the session key; stale callbacks cannot overwrite recovery. Requires editor access and expected_version. Reopen using editor-link afterwards.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "docs"
-                ],
-                "summary": "Recover a document from its latest saved Drive snapshot",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Drive file UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Expected current revision",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/domain.OfficeRecoveryRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "integer"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "415": {
-                        "description": "Unsupported Media Type",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/drive/files/{id}/versions": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "drive"
-                ],
-                "summary": "List immutable Drive file revisions",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "File UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Page size (default 20, maximum 100)",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Offset",
-                        "name": "offset",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.DriveFileVersion"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/drive/files/{id}/versions/{version}/download": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/octet-stream"
-                ],
-                "tags": [
-                    "drive"
-                ],
-                "summary": "Download a saved revision",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "File UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Revision number",
-                        "name": "version",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "file"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/drive/files/{id}/versions/{version}/restore": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Requires editor access. Retains existing history and rotates the editor session key; stale callbacks cannot overwrite the restored version.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "drive"
-                ],
-                "summary": "Restore a saved revision as a new current revision",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "File UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Revision to restore",
-                        "name": "version",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Expected current revision",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/domain.OfficeRecoveryRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "integer"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/docs/files/{id}/participants": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Deduplicated by user across tabs. Only active session keys, recent heartbeats and users with current editor rights are included. Presence expires after 90 seconds without a heartbeat.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "docs"
-                ],
-                "summary": "List active editors of a Drive document",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Drive file UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.OfficeParticipant"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/drive/onlyoffice/collaboration": {
-            "get": {
-                "description": "Uses a file-scoped collaboration token embedded in the editor HTML. Only users with current access to that file are returned; maximum 100 IDs.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "docs"
-                ],
-                "summary": "Resolve editor participant names and avatars",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "File UUID",
-                        "name": "file_id",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Collaboration token",
-                        "name": "token",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Comma-separated user IDs",
-                        "name": "ids",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.OfficeUser"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "Uses a signed collaboration token for one file, user and tab. Only edit sessions may heartbeat; inactive tabs expire after 90 seconds.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "docs"
-                ],
-                "summary": "Heartbeat or leave an editor tab",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "File UUID",
-                        "name": "file_id",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Collaboration token",
-                        "name": "token",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "description": "Presence action",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/domain.OfficePresenceRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/docs/files": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Supply format (docx/xlsx/pptx) OR template_id. Creates an independent Drive file; open it via the DOC-001 editor-link endpoint.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "docs"
-                ],
-                "summary": "Create a blank document or a copy of a company template",
-                "parameters": [
-                    {
-                        "description": "Document",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/domain.CreateDocumentRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/domain.DriveFile"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "413": {
-                        "description": "Request Entity Too Large",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "507": {
-                        "description": "Insufficient Storage",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/docs/templates": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "docs"
-                ],
-                "summary": "List available templates of the current company",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Page size (default 50, max 100)",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Offset",
-                        "name": "offset",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.DocumentTemplate"
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Requires organization owner/administrator. Explicitly makes the source's current contents available for copying by company members. Only DOCX/XLSX/PPTX; source edits update the template.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "docs"
-                ],
-                "summary": "Publish an owned Drive file as a company template",
-                "parameters": [
-                    {
-                        "description": "Template",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/domain.PublishDocumentTemplateRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/domain.DocumentTemplate"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/docs/templates/{id}": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "tags": [
-                    "docs"
-                ],
-                "summary": "Unpublish a company template without deleting source or copies",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Template UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/drive/files/{id}/tags": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "tags": [
-                    "drive"
-                ],
-                "summary": "Get file tags",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "File UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "tags": [
-                    "drive"
-                ],
-                "summary": "Replace file tags (editor permission required)",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "File UUID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Up to 20 tags; empty array clears tags",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.driveTagsRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
         "/admin/users": {
             "get": {
                 "security": [
@@ -2112,6 +305,24 @@ const docTemplate = `{
                 "responses": {}
             }
         },
+        "/ai/limits": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns 5-hour and weekly AI budget limits, consumption, and access blockers for authenticated user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "AI"
+                ],
+                "summary": "Get user's AI limits and access status",
+                "responses": {}
+            }
+        },
         "/ai/models": {
             "get": {
                 "security": [
@@ -2300,184 +511,6 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/api/messages/sync": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Retrieves messages that were missed during disconnection for the specified device",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "messages",
-                    "sync"
-                ],
-                "summary": "Synchronize missed messages",
-                "parameters": [
-                    {
-                        "description": "Sync request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.SyncMessagesRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/service.SyncResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/messages/sync/position": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Manually updates the last synchronized message position for a device",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "messages",
-                    "sync"
-                ],
-                "summary": "Update sync position",
-                "parameters": [
-                    {
-                        "description": "Update request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.UpdateSyncPositionRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/messages/sync/status": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns the current synchronization status for a device",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "messages",
-                    "sync"
-                ],
-                "summary": "Get sync status",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Device ID",
-                        "name": "device_id",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Conversation ID (optional)",
-                        "name": "conversation_id",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/repository.SyncCursor"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
                         }
                     }
                 }
@@ -3136,6 +1169,144 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/invitations/accept": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organization-invitations"
+                ],
+                "summary": "Accept an invitation",
+                "parameters": [
+                    {
+                        "description": "Invitation and confirmation code",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.invitationAcceptRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.InvitationResult"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/invitations/code": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organization-invitations"
+                ],
+                "summary": "Send an invitation confirmation code",
+                "parameters": [
+                    {
+                        "description": "Invitation secret",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.invitationTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/invitations/preview": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organization-invitations"
+                ],
+                "summary": "Preview an invitation",
+                "parameters": [
+                    {
+                        "description": "Invitation secret",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.invitationTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/auth.InvitationPreview"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/invitations/register": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organization-invitations"
+                ],
+                "summary": "Register by invitation",
+                "parameters": [
+                    {
+                        "description": "Registration and email confirmation",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.InvitationRegistrationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/domain.InvitationResult"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/keycloak/exchange": {
             "post": {
                 "produces": [
@@ -3384,6 +1555,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/me/language": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Update current user's interface language",
+                "parameters": [
+                    {
+                        "description": "Interface language: ru or kk",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.UpdateLanguageRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.UserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/auth/onboarding/complete": {
             "post": {
                 "security": [
@@ -3391,7 +1614,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Sets is_first_login flag to false. Call this after showing welcome screens.",
+                "description": "Completes welcome screens. Native iForm hires must change their temporary password first.",
                 "produces": [
                     "application/json"
                 ],
@@ -3407,6 +1630,13 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -3451,6 +1681,340 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/recovery-email": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "account-recovery"
+                ],
+                "summary": "Get recovery email settings",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/recovery-email/code": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "account-recovery"
+                ],
+                "summary": "Send recovery email confirmation code",
+                "parameters": [
+                    {
+                        "description": "Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.RecoveryEmailCodeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/recovery-email/confirm": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "account-recovery"
+                ],
+                "summary": "Confirm recovery email change or removal",
+                "parameters": [
+                    {
+                        "description": "Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.RecoveryEmailConfirmRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/recovery/complete": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "account-recovery"
+                ],
+                "summary": "Reset password and revoke previous sessions",
+                "parameters": [
+                    {
+                        "description": "Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.PasswordRecoveryCompleteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/recovery/preview": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "account-recovery"
+                ],
+                "summary": "Validate a recovery link without exposing account details",
+                "parameters": [
+                    {
+                        "description": "Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.PasswordRecoveryProof"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/recovery/request": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "account-recovery"
+                ],
+                "summary": "Request password recovery without exposing account existence",
+                "parameters": [
+                    {
+                        "description": "Request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.PasswordRecoveryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -3508,44 +2072,18 @@ const docTemplate = `{
         },
         "/auth/register": {
             "post": {
-                "description": "Register a new user account",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Direct registration is closed. Use /auth/invitations/register.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "auth"
                 ],
-                "summary": "Register a new user",
-                "parameters": [
-                    {
-                        "description": "Registration request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/auth.RegisterRequest"
-                        }
-                    }
-                ],
+                "summary": "Legacy registration (invitation required)",
+                "deprecated": true,
                 "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/auth.TokenPair"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "409": {
-                        "description": "Conflict",
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -6075,59 +4613,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/calls/group/start": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Initiates a group call and sends push notifications to all group members",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "calls"
-                ],
-                "summary": "Start a group call",
-                "parameters": [
-                    {
-                        "description": "Start Group Call",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.StartGroupCallRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/handler.StartCallResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
         "/calls/invite": {
             "post": {
                 "security": [
@@ -7304,391 +5789,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/chat-themes": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Gets the global chat theme for the current user",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat_themes"
-                ],
-                "summary": "Get global chat theme",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/domain.ChatTheme"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/apperrors.AppError"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/apperrors.AppError"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Creates or updates the global chat theme for the current user",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat_themes"
-                ],
-                "summary": "Set global chat theme",
-                "parameters": [
-                    {
-                        "description": "Chat Theme Configuration",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/domain.UpdateChatThemeRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/domain.ChatTheme"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/apperrors.AppError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/apperrors.AppError"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Reverts the global chat configuration to default",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat_themes"
-                ],
-                "summary": "Delete global chat theme",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/apperrors.AppError"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/apperrors.AppError"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/apperrors.AppError"
-                        }
-                    }
-                }
-            }
-        },
-        "/chats/pin": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Pin a chat for current user",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "pinned"
-                ],
-                "summary": "Pin chat",
-                "parameters": [
-                    {
-                        "description": "Pin request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.PinChatRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/chats/pinned": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get all pinned chats for current user",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "pinned"
-                ],
-                "summary": "Get pinned chats",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.PinnedChat"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/chats/share": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Share a Kanban task or Calendar event to a chat",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat"
-                ],
-                "summary": "Share task or event",
-                "parameters": [
-                    {
-                        "description": "Share request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.ShareItemRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/domain.MessageView"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/chats/unified": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get all chats (personal and groups) sorted by pinned and activity",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chats"
-                ],
-                "summary": "Get unified chats",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Limit",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Offset",
-                        "name": "offset",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.ConversationView"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/chats/unpin": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Unpin a chat for current user",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "pinned"
-                ],
-                "summary": "Unpin chat",
-                "parameters": [
-                    {
-                        "description": "Unpin request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.PinChatRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/chats/{chat_id}/attachments/stats": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get statistics of attachments by type in a specific chat",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "search"
-                ],
-                "summary": "Get chat attachment statistics",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Chat ID",
-                        "name": "chat_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
         "/client/devices/metadata": {
             "post": {
                 "security": [
@@ -7731,33 +5831,48 @@ const docTemplate = `{
                 }
             }
         },
-        "/conversations": {
+        "/contacts": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get all conversations for current user",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "chat"
+                    "contacts"
                 ],
-                "summary": "Get user conversations",
+                "summary": "Search employee directory",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "Literal case-insensitive substring of name, email or username (max 200 characters)",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Exact organization unit UUID (without descendants)",
+                        "name": "unit_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Exact case-insensitive job title (max 255 characters)",
+                        "name": "position",
+                        "in": "query"
+                    },
+                    {
                         "type": "integer",
-                        "default": 20,
-                        "description": "Limit",
+                        "description": "Page size, 1 to 100; default 50",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "default": 0,
-                        "description": "Offset",
+                        "description": "Non-negative page offset",
                         "name": "offset",
                         "in": "query"
                     }
@@ -7766,283 +5881,53 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.ConversationView"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Create a new conversation with another user or return existing one",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat"
-                ],
-                "summary": "Create or get conversation",
-                "parameters": [
-                    {
-                        "description": "Conversation request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.CreateConversationRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/domain.Conversation"
+                            "$ref": "#/definitions/domain.ContactList"
                         }
                     },
                     "400": {
                         "description": "Bad Request",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/apperrors.AppError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/apperrors.AppError"
                         }
                     }
                 }
             }
         },
-        "/conversations/broadcast": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Send the same message to multiple users via individual conversations",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat"
-                ],
-                "summary": "Broadcast message to multiple users",
-                "parameters": [
-                    {
-                        "description": "Broadcast request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/service.BroadcastMessageRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/service.BroadcastMessageResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/conversations/{conversation_id}": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Hide a conversation for the current user (does not affect other participants)",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat"
-                ],
-                "summary": "Hide conversation",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Conversation ID",
-                        "name": "conversation_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/conversations/{conversation_id}/messages": {
+        "/contacts/directory": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get messages from conversation",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "chat"
+                    "contacts"
                 ],
-                "summary": "Get messages",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Conversation ID",
-                        "name": "conversation_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "default": 50,
-                        "description": "Limit",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 0,
-                        "description": "Offset",
-                        "name": "offset",
-                        "in": "query"
-                    }
-                ],
+                "summary": "Get LDAP/AD directory connector",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/domain.DirectoryConfig"
                         }
                     }
                 }
             },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Send a message in conversation",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat"
-                ],
-                "summary": "Send message",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Conversation ID",
-                        "name": "conversation_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Message request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.SendMessageRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/domain.MessageView"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/conversations/{conversation_id}/mute": {
             "put": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Toggle push notifications for the current user in a personal conversation. Mentions still send notifications.",
                 "consumes": [
                     "application/json"
                 ],
@@ -8050,24 +5935,17 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "chat"
+                    "contacts"
                 ],
-                "summary": "Mute or unmute conversation",
+                "summary": "Configure LDAP/AD employee directory",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Conversation ID",
-                        "name": "conversation_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Mute request",
+                        "description": "Connector; omitted bind_password preserves the existing secret",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handler.MuteChatRequest"
+                            "$ref": "#/definitions/domain.DirectoryConfigRequest"
                         }
                     }
                 ],
@@ -8075,61 +5953,494 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/domain.DirectoryConfig"
                         }
                     }
                 }
             }
         },
-        "/conversations/{conversation_id}/shared-media": {
+        "/contacts/directory/sync": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "contacts"
+                ],
+                "summary": "Synchronize employee profiles from LDAP/AD",
+                "parameters": [
+                    {
+                        "description": "dry_run defaults to true; false applies",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.DirectorySyncRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ContactImportResult"
+                        }
+                    }
+                }
+            }
+        },
+        "/contacts/filters": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Get paginated image and video attachments from conversation history",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "chat"
+                    "contacts"
                 ],
-                "summary": "Get shared media",
+                "summary": "Get employee directory filters",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ContactFilters"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/apperrors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/contacts/import": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "contacts"
+                ],
+                "summary": "Import employees from CSV or XLSX",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Conversation ID",
-                        "name": "conversation_id",
+                        "type": "file",
+                        "description": "UTF-8 CSV or single-sheet XLSX, up to 10 MiB/5000 employees",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Validate without applying; default true",
+                        "name": "dry_run",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ContactImportResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apperrors.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/apperrors.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/contacts/{user_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "contacts"
+                ],
+                "summary": "Get employee profile",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Employee ID",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ContactProfile"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apperrors.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/apperrors.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "contacts"
+                ],
+                "summary": "Update own employee contacts",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Own employee ID",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Contact details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.UpdateContactRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apperrors.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/apperrors.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/apperrors.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/contacts/{user_id}/actions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Read-only navigation data: chat peer, safe mailto URL and meeting composer defaults. Also included in the employee profile.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "contacts"
+                ],
+                "summary": "Get employee quick actions",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Employee ID",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ContactActions"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apperrors.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/apperrors.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/contacts/{user_id}/avatar": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "contacts"
+                ],
+                "summary": "Upload own employee avatar",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Own employee ID",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "JPEG/PNG, at most 5 MiB and 2048x2048",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ContactProfile"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apperrors.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/apperrors.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/contacts/{user_id}/offboarding": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "contacts"
+                ],
+                "summary": "Read employee offboarding result",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Employee ID",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ContactOffboardingResult"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/apperrors.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/apperrors.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "contacts"
+                ],
+                "summary": "Offboard employee and hand work to a successor",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Employee ID",
+                        "name": "user_id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Preview and roll back (default true)",
+                        "name": "dry_run",
+                        "in": "query"
+                    },
+                    {
+                        "description": "Successor and reason",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.ContactOffboardingRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.ContactOffboardingResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apperrors.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/apperrors.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/apperrors.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/apperrors.ErrorResponse"
+                        }
+                    },
+                    "507": {
+                        "description": "Insufficient Storage",
+                        "schema": {
+                            "$ref": "#/definitions/apperrors.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/contacts/{user_id}/reports": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "contacts"
+                ],
+                "summary": "List employee direct reports",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Manager employee ID",
+                        "name": "user_id",
                         "in": "path",
                         "required": true
                     },
                     {
                         "type": "integer",
-                        "default": 30,
-                        "description": "Limit",
+                        "description": "Page size 1 to 100, default 50",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "default": 0,
-                        "description": "Offset",
+                        "description": "Non-negative offset",
                         "name": "offset",
                         "in": "query"
                     }
@@ -8138,63 +6449,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/domain.SharedMediaResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/conversations/{conversation_id}/unhide": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Restore a hidden conversation for the current user",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat"
-                ],
-                "summary": "Unhide conversation",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Conversation ID",
-                        "name": "conversation_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
+                            "$ref": "#/definitions/domain.ContactList"
                         }
                     }
                 }
@@ -8274,6 +6529,701 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
+                        }
+                    }
+                }
+            }
+        },
+        "/docs/files": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Supply format (docx/xlsx/pptx) OR template_id. Creates an independent Drive file; open it via the DOC-001 editor-link endpoint.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "docs"
+                ],
+                "summary": "Create a blank document or a copy of a company template",
+                "parameters": [
+                    {
+                        "description": "Document",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.CreateDocumentRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/domain.DriveFile"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "507": {
+                        "description": "Insufficient Storage",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/docs/files/{id}/export": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Conversion supports DOC to DOCX, XLS to XLSX, PPT to PPTX and office formats to PDF. PDF to editable formats and cross-family conversions are unsupported. Does not include unsaved editor changes or modify the source. Requires viewer access. Returns 202 while converting; repeat with the returned version.",
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "docs"
+                ],
+                "summary": "Export a saved document revision in its original format, OOXML or PDF",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Drive file UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "doc/docx/xls/xlsx/ppt/pptx/pdf; see conversion matrix",
+                        "name": "format",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Saved revision (default current)",
+                        "name": "version",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        },
+                        "headers": {
+                            "X-Document-Version": {
+                                "type": "integer",
+                                "description": "Exported saved revision"
+                            }
+                        }
+                    },
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "415": {
+                        "description": "Unsupported Media Type",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "502": {
+                        "description": "Bad Gateway",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "504": {
+                        "description": "Gateway Timeout",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/docs/files/{id}/participants": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deduplicated by user across tabs. Only active session keys, recent heartbeats and users with current editor rights are included. Presence expires after 90 seconds without a heartbeat.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "docs"
+                ],
+                "summary": "List active editors of a Drive document",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Drive file UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.OfficeParticipant"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/docs/files/{id}/recover": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Explicitly abandons unsaved changes in the old editor session. Appends a new revision and rotates the session key; stale callbacks cannot overwrite recovery. Requires editor access and expected_version. Reopen using editor-link afterwards.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "docs"
+                ],
+                "summary": "Recover a document from its latest saved Drive snapshot",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Drive file UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Expected current revision",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.OfficeRecoveryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "integer"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "415": {
+                        "description": "Unsupported Media Type",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/docs/files/{id}/save-state": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Saved time refers to the Drive revision, not unsaved edits or DocumentServer connection health. Failures belong to the current revision and session only.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "docs"
+                ],
+                "summary": "Get last durable document checkpoint and save failure",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Drive file UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.OfficeSaveState"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/docs/import": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "docs"
+                ],
+                "summary": "Import an office document or PDF into Drive without changing its bytes",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "DOC/DOCX/XLS/XLSX/PPT/PPTX/PDF; maximum 100 MiB",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Target folder UUID",
+                        "name": "folder_id",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/domain.DriveFile"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "413": {
+                        "description": "Request Entity Too Large",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "415": {
+                        "description": "Unsupported Media Type",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "507": {
+                        "description": "Insufficient Storage",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/docs/templates": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "docs"
+                ],
+                "summary": "List available templates of the current company",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 50, max 100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.DocumentTemplate"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Requires organization owner/administrator. Explicitly makes the source's current contents available for copying by company members. Only DOCX/XLSX/PPTX; source edits update the template.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "docs"
+                ],
+                "summary": "Publish an owned Drive file as a company template",
+                "parameters": [
+                    {
+                        "description": "Template",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.PublishDocumentTemplateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/domain.DocumentTemplate"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/docs/templates/{id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "docs"
+                ],
+                "summary": "Unpublish a company template without deleting source or copies",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Template UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -8889,6 +7839,313 @@ const docTemplate = `{
                     },
                     "415": {
                         "description": "Unsupported Media Type",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/drive/files/{id}/tags": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "drive"
+                ],
+                "summary": "Get file tags",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "File UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "drive"
+                ],
+                "summary": "Replace file tags (editor permission required)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "File UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Up to 20 tags; empty array clears tags",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.driveTagsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/drive/files/{id}/versions": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "drive"
+                ],
+                "summary": "List immutable Drive file revisions",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "File UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size (default 20, maximum 100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.DriveFileVersion"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/drive/files/{id}/versions/{version}/download": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "drive"
+                ],
+                "summary": "Download a saved revision",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "File UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Revision number",
+                        "name": "version",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/drive/files/{id}/versions/{version}/restore": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Requires editor access. Retains existing history and rotates the editor session key; stale callbacks cannot overwrite the restored version.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "drive"
+                ],
+                "summary": "Restore a saved revision as a new current revision",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "File UUID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Revision to restore",
+                        "name": "version",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Expected current revision",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.OfficeRecoveryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "integer"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -9648,6 +8905,151 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/drive/onlyoffice/collaboration": {
+            "get": {
+                "description": "Uses a file-scoped collaboration token embedded in the editor HTML. Only users with current access to that file are returned; maximum 100 IDs.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "docs"
+                ],
+                "summary": "Resolve editor participant names and avatars",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "File UUID",
+                        "name": "file_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Collaboration token",
+                        "name": "token",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comma-separated user IDs",
+                        "name": "ids",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/domain.OfficeUser"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Uses a signed collaboration token for one file, user and tab. Only edit sessions may heartbeat; inactive tabs expire after 90 seconds.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "docs"
+                ],
+                "summary": "Heartbeat or leave an editor tab",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "File UUID",
+                        "name": "file_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Collaboration token",
+                        "name": "token",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "description": "Presence action",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.OfficePresenceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -11148,52 +10550,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/e2ee/web/pairing/sessions/{pairing_id}/history": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Uploads re-wrapped message keys so a linked web device can decrypt old history",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "e2ee"
-                ],
-                "summary": "Sync wrapped history keys for web device",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Pairing ID",
-                        "name": "pairing_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "History sync request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/service.SyncWebPairingHistoryRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/service.SyncWebPairingHistoryResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/e2ee/web/pairing/sessions/{pairing_id}/preview": {
             "post": {
                 "security": [
@@ -11818,273 +11174,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/folders": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "folders"
-                ],
-                "summary": "Get user folders",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.ChatFolderView"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "folders"
-                ],
-                "summary": "Create chat folder",
-                "parameters": [
-                    {
-                        "description": "Request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.CreateFolderRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/domain.ChatFolder"
-                        }
-                    }
-                }
-            }
-        },
-        "/folders/{id}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "folders"
-                ],
-                "summary": "Get folder details with chats",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Folder ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/domain.ChatFolderView"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "folders"
-                ],
-                "summary": "Update chat folder",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Folder ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.UpdateFolderRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "folders"
-                ],
-                "summary": "Delete chat folder",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Folder ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/folders/{id}/chats": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "folders"
-                ],
-                "summary": "Add chat to folder",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Folder ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.AddChatToFolderRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/folders/{id}/chats/{chat_id}": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "folders"
-                ],
-                "summary": "Remove chat from folder",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Folder ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Chat ID",
-                        "name": "chat_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/gamification/dashboard": {
             "get": {
                 "security": [
@@ -12171,816 +11260,6 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/groups": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get all groups for current user",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "groups"
-                ],
-                "summary": "Get user groups",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Limit",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Offset",
-                        "name": "offset",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.GroupView"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Create a new group",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "groups"
-                ],
-                "summary": "Create group",
-                "parameters": [
-                    {
-                        "description": "Group creation request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.CreateGroupRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/domain.Group"
-                        }
-                    }
-                }
-            }
-        },
-        "/groups/{group_id}": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get group details",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "groups"
-                ],
-                "summary": "Get group",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Group ID",
-                        "name": "group_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/domain.GroupDetails"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Update group details",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "groups"
-                ],
-                "summary": "Update group",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Group ID",
-                        "name": "group_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Update request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.UpdateGroupRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Delete a group (only owner)",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "groups"
-                ],
-                "summary": "Delete group",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Group ID",
-                        "name": "group_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/groups/{group_id}/avatar": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Upload and update group avatar image",
-                "consumes": [
-                    "multipart/form-data"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "groups"
-                ],
-                "summary": "Update group avatar",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Group ID",
-                        "name": "group_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "file",
-                        "description": "Avatar image file",
-                        "name": "file",
-                        "in": "formData",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/domain.Group"
-                        }
-                    }
-                }
-            }
-        },
-        "/groups/{group_id}/events": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns upcoming calendar events linked to the group.",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "groups"
-                ],
-                "summary": "Get upcoming group events",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Group ID",
-                        "name": "group_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Limit",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/domain.GroupEventsResponse"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Creates a calendar event inside a group and automatically adds all current group members as attendees.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "groups"
-                ],
-                "summary": "Create group calendar event",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Group ID",
-                        "name": "group_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "boolean",
-                        "description": "Create despite availability conflicts",
-                        "name": "force",
-                        "in": "query"
-                    },
-                    {
-                        "description": "Group event creation request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/domain.CreateEventRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/domain.Event"
-                        }
-                    }
-                }
-            }
-        },
-        "/groups/{group_id}/hide": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Hide a group for current user (does not affect other members)",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "groups"
-                ],
-                "summary": "Hide group",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Group ID",
-                        "name": "group_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/groups/{group_id}/leave": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Leave a group",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "groups"
-                ],
-                "summary": "Leave group",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Group ID",
-                        "name": "group_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/groups/{group_id}/members": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Add a new member to group",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "groups"
-                ],
-                "summary": "Add member to group",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Group ID",
-                        "name": "group_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Member request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.AddGroupMemberRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/groups/{group_id}/members/{user_id}": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Remove a member from group",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "groups"
-                ],
-                "summary": "Remove member from group",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Group ID",
-                        "name": "group_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "User ID",
-                        "name": "user_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/groups/{group_id}/members/{user_id}/role": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Update member role in group",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "groups"
-                ],
-                "summary": "Update member role",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Group ID",
-                        "name": "group_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "User ID",
-                        "name": "user_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Role request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.UpdateGroupMemberRoleRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/groups/{group_id}/messages": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get messages from group with pagination",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "groups"
-                ],
-                "summary": "Get group messages",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Group ID",
-                        "name": "group_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "default": 50,
-                        "description": "Limit",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 0,
-                        "description": "Offset",
-                        "name": "offset",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Send a message in group",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "groups"
-                ],
-                "summary": "Send group message",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Group ID",
-                        "name": "group_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Message request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.GroupSendMessageRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/domain.MessageView"
-                        }
-                    }
-                }
-            }
-        },
-        "/groups/{group_id}/mute": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Toggle push notifications for the current user in a group. Mentions still send notifications.",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "groups"
-                ],
-                "summary": "Mute or unmute group",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Group ID",
-                        "name": "group_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Mute request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.MuteChatRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/groups/{group_id}/shared-media": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get paginated image and video attachments from group history",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "groups"
-                ],
-                "summary": "Get group shared media",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Group ID",
-                        "name": "group_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "default": 30,
-                        "description": "Limit",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 0,
-                        "description": "Offset",
-                        "name": "offset",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/domain.SharedMediaResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/groups/{group_id}/unhide": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Restore a hidden group for current user",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "groups"
-                ],
-                "summary": "Unhide group",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Group ID",
-                        "name": "group_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -16512,663 +14791,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/messages": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Delete multiple messages by IDs",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat"
-                ],
-                "summary": "Delete multiple messages",
-                "parameters": [
-                    {
-                        "description": "Delete request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.DeleteMessagesRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/messages/forward": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Forward multiple messages to one or more chats",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat"
-                ],
-                "summary": "Forward messages",
-                "parameters": [
-                    {
-                        "description": "Forward request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.ForwardMessagesRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.MessageView"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/messages/pin": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Pin a message in chat",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "pinned"
-                ],
-                "summary": "Pin message",
-                "parameters": [
-                    {
-                        "description": "Pin message request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.PinMessageRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/messages/pinned": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get all pinned messages for a chat",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "pinned"
-                ],
-                "summary": "Get pinned messages",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Chat ID",
-                        "name": "chat_id",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Chat Type",
-                        "name": "chat_type",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.PinnedMessage"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/messages/{message_id}": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Edit a message in conversation or group",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat"
-                ],
-                "summary": "Edit message",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Message ID",
-                        "name": "message_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Edit request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.EditMessageRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Delete a message",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat"
-                ],
-                "summary": "Delete message",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Message ID",
-                        "name": "message_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/messages/{message_id}/delivered": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat"
-                ],
-                "summary": "Mark message as delivered",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Message ID",
-                        "name": "message_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/messages/{message_id}/reactions": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Add a reaction (emoji) to a message",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat"
-                ],
-                "summary": "Add reaction to message",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Message ID",
-                        "name": "message_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Reaction request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.AddReactionRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/messages/{message_id}/reactions/{reaction}": {
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Remove a reaction from a message",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat"
-                ],
-                "summary": "Remove reaction from message",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Message ID",
-                        "name": "message_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Reaction (URL encoded emoji)",
-                        "name": "reaction",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/messages/{message_id}/read": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Mark message as read",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat"
-                ],
-                "summary": "Mark message as read",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Message ID",
-                        "name": "message_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/messages/{message_id}/thread": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Returns the selected message and its visible nested replies",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat"
-                ],
-                "summary": "Get message reply tree",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Root message ID",
-                        "name": "message_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "default": 200,
-                        "description": "Maximum number of replies (1-200)",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/domain.MessageThreadResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/messages/{message_id}/unpin": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Unpin a message",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "pinned"
-                ],
-                "summary": "Unpin message",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Message ID",
-                        "name": "message_id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Chat ID",
-                        "name": "chat_id",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Chat Type",
-                        "name": "chat_type",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/messages/{message_id}/viewers": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Get list of users who have read the message",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "chat"
-                ],
-                "summary": "Get message viewers",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Message ID",
-                        "name": "message_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.MessageViewer"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
         "/metrics/burn-down": {
             "get": {
                 "security": [
@@ -17925,6 +15547,183 @@ const docTemplate = `{
                 }
             }
         },
+        "/notebook/chats/{id}/ask": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Documents that do not fit into one model context are analyzed chunk by chunk (map-reduce).\nstatus: answered | partial | not_found | no_sources | unreadable. Only answered, partial and not_found are results.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notebook"
+                ],
+                "summary": "Answer a question or run a Studio preset over the selected notebook sources",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Chat ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Question or preset",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.NotebookResearchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/service.NotebookResearchResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/notebook/chats/{id}/ask/jobs": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Same body and checks as /ask. Returns 202 with a queued job; a repeated operation_id returns the existing job with 200.\nProgress: GET .../ask/jobs/{job_id} or the WebSocket event notebook.research.progress. One unfinished job per user (409 otherwise).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notebook"
+                ],
+                "summary": "Start notebook research in the background",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Chat ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Question or preset",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.NotebookResearchRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/service.NotebookResearchJob"
+                        }
+                    },
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/service.NotebookResearchJob"
+                        }
+                    }
+                }
+            }
+        },
+        "/notebook/chats/{id}/ask/jobs/{job_id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notebook"
+                ],
+                "summary": "Status, progress and result of a background notebook research job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Chat ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "job_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/service.NotebookResearchJob"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Returns the job; a finished job is returned unchanged. Completed paid steps stay charged.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notebook"
+                ],
+                "summary": "Cancel a background notebook research job",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Chat ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Job ID",
+                        "name": "job_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/service.NotebookResearchJob"
+                        }
+                    }
+                }
+            }
+        },
         "/notebook/chats/{id}/documents": {
             "get": {
                 "security": [
@@ -18283,6 +16082,41 @@ const docTemplate = `{
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/notebook/studio/presets": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notebook"
+                ],
+                "summary": "Ready-made Studio prompts (cards) for notebook research",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ru (default) or kz",
+                        "name": "lang",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/service.NotebookStudioPreset"
+                            }
                         }
                     }
                 }
@@ -20678,6 +18512,178 @@ const docTemplate = `{
                 }
             }
         },
+        "/organizations/current/invitations": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organization-invitations"
+                ],
+                "summary": "List organization invitations",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 25,
+                        "description": "Page size (1-100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.InvitationPage"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organization-invitations"
+                ],
+                "summary": "Invite an employee",
+                "parameters": [
+                    {
+                        "description": "Recipient and optional department",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.CreateInvitationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/auth.IssuedInvitation"
+                        }
+                    }
+                }
+            }
+        },
+        "/organizations/current/invitations/{invitation_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "organization-invitations"
+                ],
+                "summary": "Revoke an invitation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invitation UUID",
+                        "name": "invitation_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/organizations/current/invitations/{invitation_id}/resend": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organization-invitations"
+                ],
+                "summary": "Resend an invitation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invitation UUID",
+                        "name": "invitation_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/auth.IssuedInvitation"
+                        }
+                    }
+                }
+            }
+        },
+        "/organizations/current/tree": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organizations"
+                ],
+                "summary": "Get company organization tree",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.OrganizationTree"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/apperrors.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/apperrors.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/organizations/current/units": {
             "get": {
                 "security": [
@@ -21089,6 +19095,142 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/domain.PlatformOrganization"
+                        }
+                    }
+                }
+            }
+        },
+        "/platform/organizations/{organization_id}/invitations": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organization-invitations"
+                ],
+                "summary": "List organization invitations",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 25,
+                        "description": "Page size (1-100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "Offset",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/domain.InvitationPage"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organization-invitations"
+                ],
+                "summary": "Invite an employee",
+                "parameters": [
+                    {
+                        "description": "Recipient and optional department",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.CreateInvitationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/auth.IssuedInvitation"
+                        }
+                    }
+                }
+            }
+        },
+        "/platform/organizations/{organization_id}/invitations/{invitation_id}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "tags": [
+                    "organization-invitations"
+                ],
+                "summary": "Revoke an invitation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invitation UUID",
+                        "name": "invitation_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/platform/organizations/{organization_id}/invitations/{invitation_id}/resend": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "organization-invitations"
+                ],
+                "summary": "Resend an invitation",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Invitation UUID",
+                        "name": "invitation_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/auth.IssuedInvitation"
                         }
                     }
                 }
@@ -22277,7 +20419,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Search across users and conversations",
+                "description": "Search visible users",
                 "produces": [
                     "application/json"
                 ],
@@ -22364,274 +20506,6 @@ const docTemplate = `{
                         "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/apperrors.AppError"
-                        }
-                    }
-                }
-            }
-        },
-        "/search/attachments": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Search attachments across all accessible chats",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "search"
-                ],
-                "summary": "Search attachments",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Filter by type: image, video, audio, file, voice, all (default all)",
-                        "name": "attachment_type",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Search by filename",
-                        "name": "q",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Limit (max 100, default 20)",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Offset for pagination (default 0)",
-                        "name": "offset",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by specific chat ID",
-                        "name": "chat_id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter from date (ISO 8601)",
-                        "name": "from_date",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter to date (ISO 8601)",
-                        "name": "to_date",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    }
-                }
-            }
-        },
-        "/search/identical": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Find all messages that match the content of the provided message",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "search"
-                ],
-                "summary": "Find identical messages",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Content to match",
-                        "name": "content",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.MessageView"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/search/messages": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Search messages in a conversation",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "search"
-                ],
-                "summary": "Search messages",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Conversation ID",
-                        "name": "conversation_id",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Search query",
-                        "name": "q",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Limit",
-                        "name": "limit",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/domain.MessageView"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/search/messages/global": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Search messages across all accessible chats (personal, groups, channels)",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "search"
-                ],
-                "summary": "Global message search",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Search query (min 2 chars)",
-                        "name": "q",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Limit (max 100, default 20)",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Offset for pagination (default 0)",
-                        "name": "offset",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by chat type: personal, group, channel",
-                        "name": "chat_type",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by specific chat ID",
-                        "name": "chat_id",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter by attachment type: image, video, audio, file, voice",
-                        "name": "attachment_type",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter from date (ISO 8601)",
-                        "name": "from_date",
-                        "in": "query"
-                    },
-                    {
-                        "type": "string",
-                        "description": "Filter to date (ISO 8601)",
-                        "name": "to_date",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "Filter by sender ID",
-                        "name": "sender_id",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": true
                         }
                     }
                 }
@@ -24590,7 +22464,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Establish WebSocket connection for real-time messaging",
+                "description": "Establish WebSocket connection for notifications, calls, presence and kanban updates",
                 "tags": [
                     "websocket"
                 ],
@@ -24615,767 +22489,14 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "domain.ContactOffboardingResult": {
+        "alem.ActionConfirmation": {
             "type": "object",
             "properties": {
-                "actor_id": {
-                    "type": "integer"
-                },
-                "applied": {
-                    "type": "boolean"
-                },
-                "boards": {
-                    "type": "integer"
-                },
-                "direct_reports": {
-                    "type": "integer"
-                },
-                "dry_run": {
-                    "type": "boolean"
-                },
-                "files": {
-                    "type": "integer"
-                },
-                "folders": {
-                    "type": "integer"
-                },
-                "handover_folder_id": {
+                "expires_at": {
                     "type": "string"
                 },
-                "identity_sync_status": {
+                "token": {
                     "type": "string"
-                },
-                "offboarded_at": {
-                    "type": "string"
-                },
-                "projects": {
-                    "type": "integer"
-                },
-                "reason": {
-                    "type": "string"
-                },
-                "successor_id": {
-                    "type": "integer"
-                },
-                "units": {
-                    "type": "integer"
-                },
-                "user_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "domain.ContactOffboardingRequest": {
-            "type": "object",
-            "properties": {
-                "reason": {
-                    "type": "string"
-                },
-                "successor_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "domain.ContactPrivacy": {
-            "type": "object",
-            "properties": {
-                "personal_email_visibility": {
-                    "type": "string",
-                    "enum": [
-                        "private",
-                        "admins",
-                        "managers",
-                        "company"
-                    ],
-                    "description": "Self always allowed; private: self only; admins: company owner/admin; managers: owner/admin/manager role; company: all active company members. Default admins."
-                },
-                "personal_phone_visibility": {
-                    "type": "string",
-                    "enum": [
-                        "private",
-                        "admins",
-                        "managers",
-                        "company"
-                    ],
-                    "description": "Self always allowed; private: self only; admins: company owner/admin; managers: owner/admin/manager role; company: all active company members. Default admins."
-                }
-            }
-        },
-    "domain.ContactImportResult": {
-        "type": "object",
-        "properties": {
-            "applied": {
-                "type": "boolean"
-            },
-            "created": {
-                "type": "integer"
-            },
-            "dry_run": {
-                "type": "boolean"
-            },
-            "issues": {
-                "type": "array",
-                "items": {
-                    "$ref": "#/definitions/domain.ContactImportIssue"
-                }
-            },
-            "total": {
-                "type": "integer"
-            },
-            "updated": {
-                "type": "integer"
-            }
-        }
-    },
-    "domain.ContactImportIssue": {
-        "type": "object",
-        "properties": {
-            "field": {
-                "type": "string"
-            },
-            "message": {
-                "type": "string"
-            },
-            "row": {
-                "type": "integer"
-            }
-        }
-    },
-    "domain.DirectoryConfig": {
-        "type": "object",
-        "properties": {
-            "attributes": {
-                "type": "object",
-                "additionalProperties": {
-                    "type": "string"
-                }
-            },
-            "base_dn": {
-                "type": "string"
-            },
-            "bind_dn": {
-                "type": "string"
-            },
-            "ca_cert_pem": {
-                "type": "string"
-            },
-            "enabled": {
-                "type": "boolean"
-            },
-            "filter": {
-                "type": "string"
-            },
-            "has_bind_password": {
-                "type": "boolean"
-            },
-            "last_sync_at": {
-                "type": "string"
-            },
-            "last_sync_count": {
-                "type": "integer"
-            },
-            "revision": {
-                "type": "integer"
-            },
-            "type": {
-                "type": "string"
-            },
-            "url": {
-                "type": "string"
-            }
-        }
-    },
-    "domain.DirectoryConfigRequest": {
-        "type": "object",
-        "properties": {
-            "attributes": {
-                "type": "object",
-                "additionalProperties": {
-                    "type": "string"
-                }
-            },
-            "base_dn": {
-                "type": "string"
-            },
-            "bind_dn": {
-                "type": "string"
-            },
-            "bind_password": {
-                "type": "string"
-            },
-            "ca_cert_pem": {
-                "type": "string"
-            },
-            "enabled": {
-                "type": "boolean"
-            },
-            "filter": {
-                "type": "string"
-            },
-            "type": {
-                "type": "string"
-            },
-            "url": {
-                "type": "string"
-            }
-        }
-    },
-    "domain.DirectorySyncRequest": {
-        "type": "object",
-        "properties": {
-            "dry_run": {
-                "type": "boolean"
-            }
-        }
-    },
-    "domain.ContactActions": {
-        "type": "object",
-        "properties": {
-            "chat": {
-                "$ref": "#/definitions/domain.ContactChatAction"
-            },
-            "email": {
-                "$ref": "#/definitions/domain.ContactEmailAction"
-            },
-            "meeting": {
-                "$ref": "#/definitions/domain.ContactMeetingAction"
-            }
-        }
-    },
-    "domain.ContactChatAction": {
-        "type": "object",
-        "properties": {
-            "disabled_reason": {
-                "type": "string"
-            },
-            "enabled": {
-                "type": "boolean"
-            },
-            "endpoint": {
-                "type": "string"
-            },
-            "label": {
-                "type": "string"
-            },
-            "method": {
-                "type": "string"
-            },
-            "peer_id": {
-                "type": "integer"
-            }
-        }
-    },
-    "domain.ContactEmailAction": {
-        "type": "object",
-        "properties": {
-            "address": {
-                "type": "string"
-            },
-            "disabled_reason": {
-                "type": "string"
-            },
-            "enabled": {
-                "type": "boolean"
-            },
-            "label": {
-                "type": "string"
-            },
-            "mailto_url": {
-                "type": "string"
-            }
-        }
-    },
-    "domain.ContactMeetingAction": {
-        "type": "object",
-        "properties": {
-            "attendee_ids": {
-                "type": "array",
-                "items": {
-                    "type": "integer"
-                }
-            },
-            "availability_endpoint": {
-                "type": "string"
-            },
-            "disabled_reason": {
-                "type": "string"
-            },
-            "enabled": {
-                "type": "boolean"
-            },
-            "endpoint": {
-                "type": "string"
-            },
-            "label": {
-                "type": "string"
-            },
-            "method": {
-                "type": "string"
-            },
-            "suggest_times_endpoint": {
-                "type": "string"
-            },
-            "title": {
-                "type": "string"
-            }
-        }
-    },
-    "domain.OrganizationTree": {
-        "type": "object",
-        "properties": {
-            "active_employee_count": {
-                "type": "integer"
-            },
-            "can_manage_structure": {
-                "type": "boolean"
-            },
-            "items": {
-                "type": "array",
-                "items": {
-                    "$ref": "#/definitions/domain.OrganizationTreeNode"
-                }
-            },
-            "organization_id": {
-                "type": "string"
-            },
-            "total_units": {
-                "type": "integer"
-            },
-            "unassigned_employee_count": {
-                "type": "integer"
-            }
-        }
-    },
-    "domain.OrganizationTreeNode": {
-        "type": "object",
-        "properties": {
-            "children": {
-                "type": "array",
-                "items": {
-                    "$ref": "#/definitions/domain.OrganizationTreeNode"
-                }
-            },
-            "description": {
-                "type": "string"
-            },
-            "display_order": {
-                "type": "integer"
-            },
-            "employee_count": {
-                "type": "integer"
-            },
-            "id": {
-                "type": "string"
-            },
-            "manager": {
-                "$ref": "#/definitions/domain.OrganizationTreeManager"
-            },
-            "name": {
-                "type": "string"
-            },
-            "parent_unit_id": {
-                "type": "string"
-            },
-            "subtree_employee_count": {
-                "type": "integer"
-            },
-            "unit_type": {
-                "type": "string"
-            }
-        }
-    },
-    "domain.OrganizationTreeManager": {
-        "type": "object",
-        "properties": {
-            "avatar_url": {
-                "type": "string"
-            },
-            "full_name": {
-                "type": "string"
-            },
-            "id": {
-                "type": "integer"
-            },
-            "position": {
-                "type": "string"
-            }
-        }
-    },
-    "domain.ContactProfile": {
-            "type": "object",
-            "properties": {
-                "actions": {
-                    "$ref": "#/definitions/domain.ContactActions"
-                },
-                "availability_status": {
-                    "type": "string"
-                },
-                "avatar_url": {
-                    "type": "string"
-                },
-                "direct_reports_total": {
-                    "type": "integer"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "full_name": {
-                    "type": "string"
-                },
-                "hierarchy_truncated": {
-                    "type": "boolean"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "management_chain": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.Contact"
-                    }
-                },
-                "manager": {
-                    "$ref": "#/definitions/domain.Contact"
-                },
-                "manager_id": {
-                    "type": "integer"
-                },
-                "phone": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "string"
-                },
-                "unit_id": {
-                    "type": "string"
-                },
-                "unit_name": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                },
-                "work_email": {
-                    "type": "string"
-                },
-                "personal_email": {
-                    "type": "string",
-                    "description": "Separate personal contact. Empty string clears on PATCH; omitted/null preserves. Hidden values are omitted on GET."
-                },
-                "personal_phone": {
-                    "type": "string",
-                    "description": "Separate personal contact. Empty string clears on PATCH; omitted/null preserves. Hidden values are omitted on GET."
-                },
-                "privacy": {
-                    "$ref": "#/definitions/domain.ContactPrivacy",
-                    "description": "Returned only to the employee themselves."
-                }
-            }
-        },
-    "domain.UpdateContactRequest": {
-            "type": "object",
-            "properties": {
-                "phone": {
-                    "type": "string"
-                },
-                "work_email": {
-                    "type": "string"
-                },
-                "personal_email": {
-                    "type": "string",
-                    "description": "Separate personal contact. Empty string clears on PATCH; omitted/null preserves. Hidden values are omitted on GET."
-                },
-                "personal_phone": {
-                    "type": "string",
-                    "description": "Separate personal contact. Empty string clears on PATCH; omitted/null preserves. Hidden values are omitted on GET."
-                },
-                "personal_email_visibility": {
-                    "type": "string",
-                    "enum": [
-                        "private",
-                        "admins",
-                        "managers",
-                        "company"
-                    ],
-                    "description": "Self always allowed; private: self only; admins: company owner/admin; managers: owner/admin/manager role; company: all active company members. Default admins."
-                },
-                "personal_phone_visibility": {
-                    "type": "string",
-                    "enum": [
-                        "private",
-                        "admins",
-                        "managers",
-                        "company"
-                    ],
-                    "description": "Self always allowed; private: self only; admins: company owner/admin; managers: owner/admin/manager role; company: all active company members. Default admins."
-                }
-            }
-        },
-    "domain.Contact": {
-        "type": "object",
-        "properties": {
-            "availability_status": {
-                "type": "string"
-            },
-            "avatar_url": {
-                "type": "string"
-            },
-            "email": {
-                "type": "string"
-            },
-            "full_name": {
-                "type": "string"
-            },
-            "id": {
-                "type": "integer"
-            },
-            "manager_id": {
-                "type": "integer"
-            },
-            "position": {
-                "type": "string"
-            },
-            "unit_id": {
-                "type": "string"
-            },
-            "unit_name": {
-                "type": "string"
-            },
-            "username": {
-                "type": "string"
-            }
-        }
-    },
-    "domain.ContactList": {
-        "type": "object",
-        "properties": {
-            "items": {
-                "type": "array",
-                "items": {
-                    "$ref": "#/definitions/domain.Contact"
-                }
-            },
-            "limit": {
-                "type": "integer"
-            },
-            "offset": {
-                "type": "integer"
-            },
-            "total": {
-                "type": "integer"
-            }
-        }
-    },
-    "domain.ContactUnit": {
-        "type": "object",
-        "properties": {
-            "id": {
-                "type": "string"
-            },
-            "name": {
-                "type": "string"
-            },
-            "parent_unit_id": {
-                "type": "string"
-            },
-            "unit_type": {
-                "type": "string"
-            }
-        }
-    },
-    "domain.ContactFilters": {
-        "type": "object",
-        "properties": {
-            "positions": {
-                "type": "array",
-                "items": {
-                    "type": "string"
-                }
-            },
-            "units": {
-                "type": "array",
-                "items": {
-                    "$ref": "#/definitions/domain.ContactUnit"
-                }
-            }
-        }
-    },
-        "domain.OfficeSaveState": {
-            "type": "object",
-            "properties": {
-                "failed_at": {
-                    "type": "string"
-                },
-                "failure_kind": {
-                    "type": "string"
-                },
-                "saved_at": {
-                    "type": "string"
-                },
-                "version": {
-                    "type": "integer"
-                }
-            }
-        },
-        "domain.OfficeRecoveryRequest": {
-            "type": "object",
-            "required": [
-                "expected_version"
-            ],
-            "properties": {
-                "expected_version": {
-                    "type": "integer",
-                    "minimum": 1
-                }
-            }
-        },
-        "domain.DriveFileVersion": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "created_by": {
-                    "type": "integer"
-                },
-                "created_by_name": {
-                    "type": "string"
-                },
-                "file_id": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "is_current": {
-                    "type": "boolean"
-                },
-                "size": {
-                    "type": "integer"
-                },
-                "version": {
-                    "type": "integer"
-                }
-            }
-        },
-        "domain.OfficeUser": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "image": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "domain.OfficeParticipant": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "image": {
-                    "type": "string"
-                },
-                "last_seen_at": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "domain.OfficePresenceRequest": {
-            "type": "object",
-            "required": [
-                "action"
-            ],
-            "properties": {
-                "action": {
-                    "type": "string",
-                    "enum": [
-                        "heartbeat",
-                        "leave"
-                    ]
-                }
-            }
-        },
-        "domain.CreateDocumentRequest": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "folder_id": {
-                    "type": "string"
-                },
-                "format": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "template_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "domain.DocumentTemplate": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "created_by": {
-                    "type": "integer"
-                },
-                "file_id": {
-                    "type": "string"
-                },
-                "format": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "organization_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "domain.PublishDocumentTemplateRequest": {
-            "type": "object",
-            "required": [
-                "file_id",
-                "name"
-            ],
-            "properties": {
-                "file_id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "handler.driveTagsRequest": {
-            "type": "object",
-            "required": [
-                "tags"
-            ],
-            "properties": {
-                "tags": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
                 }
             }
         },
@@ -25390,6 +22511,12 @@ const docTemplate = `{
                 },
                 "created": {
                     "type": "integer"
+                },
+                "data_cards": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/alem.DataCard"
+                    }
                 },
                 "data_sources": {
                     "type": "array",
@@ -25412,6 +22539,9 @@ const docTemplate = `{
                 "object": {
                     "type": "string"
                 },
+                "quota_stop": {
+                    "$ref": "#/definitions/alem.QuotaStop"
+                },
                 "usage": {
                     "$ref": "#/definitions/alem.Usage"
                 }
@@ -25428,6 +22558,58 @@ const docTemplate = `{
                 },
                 "message": {
                     "$ref": "#/definitions/alem.Message"
+                }
+            }
+        },
+        "alem.DataCard": {
+            "type": "object",
+            "properties": {
+                "confirmation": {
+                    "$ref": "#/definitions/alem.ActionConfirmation"
+                },
+                "due_at": {
+                    "type": "string"
+                },
+                "empty": {
+                    "type": "boolean"
+                },
+                "external_url": {
+                    "type": "string"
+                },
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/alem.DataCardField"
+                    }
+                },
+                "href": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "service": {
+                    "type": "string"
+                },
+                "source_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "alem.DataCardField": {
+            "type": "object",
+            "properties": {
+                "label": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
                 }
             }
         },
@@ -25584,6 +22766,20 @@ const docTemplate = `{
                 }
             }
         },
+        "alem.QuotaStop": {
+            "type": "object",
+            "properties": {
+                "consumed_microcredits": {
+                    "type": "string"
+                },
+                "resets_at": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string"
+                }
+            }
+        },
         "alem.RerankRequest": {
             "type": "object",
             "properties": {
@@ -25701,12 +22897,46 @@ const docTemplate = `{
         "apperrors.ErrorCode": {
             "type": "string",
             "enum": [
+                "INVITATION_UNAVAILABLE",
+                "INVITATION_CODE_REQUIRED",
+                "INVITATION_CODE_INVALID",
+                "INVITATION_ALREADY_EXISTS",
+                "INVITATION_DIFFERENT_ORGANIZATION",
+                "INVITATION_IDENTITY_CONFLICT",
+                "INVITATION_REGISTRATION_REQUIRED",
+                "INVITATION_PASSWORD_POLICY",
+                "USER_IDENTITY_CONFLICT",
+                "AI_CREDIT_LIMIT",
+                "AI_CHAT_ACCESS",
+                "AI_REVISION_CONFLICT",
+                "AI_BUDGET_CONFLICT",
+                "AI_COMPANY_SUSPENDED",
+                "AI_CONFIGURATION_REQUIRED",
+                "AI_RATE_LIMIT",
+                "AI_CONCURRENCY_LIMIT",
+                "AI_LIMITER_UNAVAILABLE",
+                "AI_ACCOUNTING_UNAVAILABLE",
+                "AI_ACCESS_DISABLED",
+                "AI_QUOTA_EXCEEDED",
+                "AI_MODEL_UNPRICED",
+                "AI_RESERVATION_CONFLICT",
+                "DRIVE_QUOTA_EXCEEDED",
                 "INTERNAL_ERROR",
                 "VALIDATION_ERROR",
+                "ACCESS_DEPENDENCIES_MISSING",
+                "ACCESS_PERMISSION_UNAVAILABLE",
                 "NOT_FOUND",
                 "UNAUTHORIZED",
                 "FORBIDDEN",
                 "CONFLICT",
+                "ODO_EVENT_CONFLICT",
+                "ODO_COMMAND_CONFLICT",
+                "ODO_UNAVAILABLE",
+                "ODO_INVALID_RECEIPT",
+                "ODO_REAUTH_REQUIRED",
+                "ODO_BACKFILL_CHANGED",
+                "ODO_REVISION_CONFLICT",
+                "ODO_LEGACY_CONFLICT",
                 "BAD_REQUEST",
                 "TOO_MANY_REQUESTS",
                 "INVALID_CREDENTIALS",
@@ -25765,16 +22995,49 @@ const docTemplate = `{
                 "INVALID_PARAGRAPH_RUNS",
                 "ROOM_NOT_FOUND",
                 "ROOM_ALREADY_BOOKED",
-                "ROOM_INACTIVE",
-                "DRIVE_QUOTA_EXCEEDED"
+                "ROOM_INACTIVE"
             ],
             "x-enum-varnames": [
+                "ErrCodeInvitationUnavailable",
+                "ErrCodeInvitationCodeRequired",
+                "ErrCodeInvitationCodeInvalid",
+                "ErrCodeInvitationAlreadyExists",
+                "ErrCodeInvitationDifferentOrganization",
+                "ErrCodeInvitationIdentityConflict",
+                "ErrCodeInvitationRegistrationRequired",
+                "ErrCodeInvitationPasswordPolicy",
+                "ErrCodeUserIdentityConflict",
+                "ErrCodeAICreditLimit",
+                "ErrCodeAIChatAccess",
+                "ErrCodeAIRevisionConflict",
+                "ErrCodeAIBudgetConflict",
+                "ErrCodeAICompanySuspended",
+                "ErrCodeAIConfigurationRequired",
+                "ErrCodeAIRateLimitExceeded",
+                "ErrCodeAIConcurrencyLimitExceeded",
+                "ErrCodeAILimiterUnavailable",
+                "ErrCodeAIAccountingUnavailable",
+                "ErrCodeAIAccessDisabled",
+                "ErrCodeAIQuotaExceeded",
+                "ErrCodeAIModelUnpriced",
+                "ErrCodeAIReservationConflict",
+                "ErrCodeDriveQuotaExceeded",
                 "ErrCodeInternal",
                 "ErrCodeValidation",
+                "ErrCodeAccessDependencies",
+                "ErrCodeAccessPermissionUnavailable",
                 "ErrCodeNotFound",
                 "ErrCodeUnauthorized",
                 "ErrCodeForbidden",
                 "ErrCodeConflict",
+                "ErrCodeODOEventConflict",
+                "ErrCodeODOCommandConflict",
+                "ErrCodeODOUnavailable",
+                "ErrCodeODOInvalidReceipt",
+                "ErrCodeODOReauthRequired",
+                "ErrCodeODOBackfillChanged",
+                "ErrCodeODORevisionConflict",
+                "ErrCodeODOLegacyConflict",
                 "ErrCodeBadRequest",
                 "ErrCodeTooManyReqs",
                 "ErrCodeInvalidCredentials",
@@ -25833,8 +23096,7 @@ const docTemplate = `{
                 "ErrCodeInvalidParagraphRuns",
                 "ErrCodeRoomNotFound",
                 "ErrCodeRoomAlreadyBooked",
-                "ErrCodeRoomInactive",
-                "ErrCodeDriveQuotaExceeded"
+                "ErrCodeRoomInactive"
             ]
         },
         "apperrors.ErrorPayload": {
@@ -25920,6 +23182,74 @@ const docTemplate = `{
                 }
             }
         },
+        "auth.InvitationPreview": {
+            "type": "object",
+            "properties": {
+                "email_hint": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "organization_name": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.InvitationRegistrationRequest": {
+            "type": "object",
+            "required": [
+                "code",
+                "first_name",
+                "iin",
+                "last_name",
+                "password",
+                "token",
+                "username"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "first_name": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "minLength": 1
+                },
+                "iin": {
+                    "type": "string"
+                },
+                "last_name": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "minLength": 1
+                },
+                "password": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 8
+                },
+                "token": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string",
+                    "maxLength": 50,
+                    "minLength": 3
+                }
+            }
+        },
+        "auth.IssuedInvitation": {
+            "type": "object",
+            "properties": {
+                "invitation": {
+                    "$ref": "#/definitions/domain.OrganizationInvitation"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
         "auth.LoginRequest": {
             "type": "object",
             "required": [
@@ -25996,50 +23326,6 @@ const docTemplate = `{
                 }
             }
         },
-        "auth.RegisterRequest": {
-            "type": "object",
-            "required": [
-                "email",
-                "first_name",
-                "iin",
-                "last_name",
-                "password",
-                "username"
-            ],
-            "properties": {
-                "email": {
-                    "type": "string"
-                },
-                "first_name": {
-                    "type": "string",
-                    "maxLength": 50,
-                    "minLength": 1
-                },
-                "iin": {
-                    "type": "string"
-                },
-                "last_name": {
-                    "type": "string",
-                    "maxLength": 50,
-                    "minLength": 1
-                },
-                "organization_id": {
-                    "type": "string"
-                },
-                "password": {
-                    "type": "string",
-                    "minLength": 8
-                },
-                "team_id": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string",
-                    "maxLength": 50,
-                    "minLength": 3
-                }
-            }
-        },
         "auth.TokenPair": {
             "type": "object",
             "properties": {
@@ -26066,6 +23352,21 @@ const docTemplate = `{
                 },
                 "token_type": {
                     "type": "string"
+                }
+            }
+        },
+        "auth.UpdateLanguageRequest": {
+            "type": "object",
+            "required": [
+                "language"
+            ],
+            "properties": {
+                "language": {
+                    "type": "string",
+                    "enum": [
+                        "ru",
+                        "kk"
+                    ]
                 }
             }
         },
@@ -26268,6 +23569,20 @@ const docTemplate = `{
                 },
                 "title": {
                     "type": "string"
+                }
+            }
+        },
+        "domain.AttendanceSummary": {
+            "type": "object",
+            "properties": {
+                "offline": {
+                    "type": "integer"
+                },
+                "online": {
+                    "type": "integer"
+                },
+                "unknown": {
+                    "type": "integer"
                 }
             }
         },
@@ -27713,178 +25028,6 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.ChannelPost": {
-            "type": "object",
-            "properties": {
-                "attachment_name": {
-                    "type": "string"
-                },
-                "attachment_size": {
-                    "type": "integer"
-                },
-                "attachment_type": {
-                    "type": "string"
-                },
-                "attachment_url": {
-                    "type": "string"
-                },
-                "author_id": {
-                    "type": "integer"
-                },
-                "channel_id": {
-                    "type": "string"
-                },
-                "comments_count": {
-                    "type": "integer"
-                },
-                "content": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "edited_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "is_deleted": {
-                    "type": "boolean"
-                },
-                "is_edited": {
-                    "type": "boolean"
-                },
-                "is_forwarded": {
-                    "type": "boolean"
-                },
-                "is_pinned": {
-                    "type": "boolean"
-                },
-                "linked_group_id": {
-                    "type": "string"
-                },
-                "metadata": {
-                    "type": "string"
-                },
-                "original_channel_id": {
-                    "type": "string"
-                },
-                "original_post_id": {
-                    "type": "string"
-                },
-                "reply_to_id": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "views_count": {
-                    "type": "integer"
-                }
-            }
-        },
-        "domain.ChatFolder": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "domain.ChatFolderView": {
-            "type": "object",
-            "properties": {
-                "chats": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.ConversationView"
-                    }
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "domain.ChatTheme": {
-            "type": "object",
-            "properties": {
-                "background_color_hex": {
-                    "type": "string"
-                },
-                "background_image_url": {
-                    "type": "string"
-                },
-                "background_type": {
-                    "description": "\"color\", \"image\", \"default\"",
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "message_color_hex": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "domain.ChatThemeConfig": {
-            "type": "object",
-            "required": [
-                "backgroundType"
-            ],
-            "properties": {
-                "backgroundColorHex": {
-                    "type": "string"
-                },
-                "backgroundImageUrl": {
-                    "type": "string"
-                },
-                "backgroundType": {
-                    "type": "string",
-                    "enum": [
-                        "color",
-                        "image",
-                        "default"
-                    ]
-                },
-                "messageColorHex": {
-                    "type": "string"
-                }
-            }
-        },
         "domain.ChecklistBlockItem": {
             "type": "object",
             "properties": {
@@ -27982,6 +25125,376 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "domain.Contact": {
+            "type": "object",
+            "properties": {
+                "availability_status": {
+                    "type": "string"
+                },
+                "avatar_url": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "full_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "manager_id": {
+                    "type": "integer"
+                },
+                "position": {
+                    "type": "string"
+                },
+                "unit_id": {
+                    "type": "string"
+                },
+                "unit_name": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.ContactActions": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "$ref": "#/definitions/domain.ContactEmailAction"
+                },
+                "meeting": {
+                    "$ref": "#/definitions/domain.ContactMeetingAction"
+                }
+            }
+        },
+        "domain.ContactEmailAction": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "string"
+                },
+                "disabled_reason": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "mailto_url": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.ContactFilters": {
+            "type": "object",
+            "properties": {
+                "positions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "units": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.ContactUnit"
+                    }
+                }
+            }
+        },
+        "domain.ContactImportIssue": {
+            "type": "object",
+            "properties": {
+                "field": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "row": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.ContactImportResult": {
+            "type": "object",
+            "properties": {
+                "applied": {
+                    "type": "boolean"
+                },
+                "created": {
+                    "type": "integer"
+                },
+                "dry_run": {
+                    "type": "boolean"
+                },
+                "issues": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.ContactImportIssue"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "updated": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.ContactList": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Contact"
+                    }
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.ContactMeetingAction": {
+            "type": "object",
+            "properties": {
+                "attendee_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "availability_endpoint": {
+                    "type": "string"
+                },
+                "disabled_reason": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "endpoint": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "method": {
+                    "type": "string"
+                },
+                "suggest_times_endpoint": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.ContactOffboardingRequest": {
+            "type": "object",
+            "properties": {
+                "reason": {
+                    "type": "string"
+                },
+                "successor_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.ContactOffboardingResult": {
+            "type": "object",
+            "properties": {
+                "actor_id": {
+                    "type": "integer"
+                },
+                "applied": {
+                    "type": "boolean"
+                },
+                "boards": {
+                    "type": "integer"
+                },
+                "direct_reports": {
+                    "type": "integer"
+                },
+                "dry_run": {
+                    "type": "boolean"
+                },
+                "files": {
+                    "type": "integer"
+                },
+                "folders": {
+                    "type": "integer"
+                },
+                "handover_folder_id": {
+                    "type": "string"
+                },
+                "identity_sync_status": {
+                    "type": "string"
+                },
+                "offboarded_at": {
+                    "type": "string"
+                },
+                "projects": {
+                    "type": "integer"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "successor_id": {
+                    "type": "integer"
+                },
+                "units": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.ContactPrivacy": {
+            "type": "object",
+            "properties": {
+                "personal_email_visibility": {
+                    "enum": [
+                        "private",
+                        "admins",
+                        "managers",
+                        "company"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.ContactVisibility"
+                        }
+                    ]
+                },
+                "personal_phone_visibility": {
+                    "enum": [
+                        "private",
+                        "admins",
+                        "managers",
+                        "company"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.ContactVisibility"
+                        }
+                    ]
+                }
+            }
+        },
+        "domain.ContactProfile": {
+            "type": "object",
+            "properties": {
+                "actions": {
+                    "$ref": "#/definitions/domain.ContactActions"
+                },
+                "availability_status": {
+                    "type": "string"
+                },
+                "avatar_url": {
+                    "type": "string"
+                },
+                "direct_reports_total": {
+                    "type": "integer"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "full_name": {
+                    "type": "string"
+                },
+                "hierarchy_truncated": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "management_chain": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.Contact"
+                    }
+                },
+                "manager": {
+                    "$ref": "#/definitions/domain.Contact"
+                },
+                "manager_id": {
+                    "type": "integer"
+                },
+                "personal_email": {
+                    "type": "string"
+                },
+                "personal_phone": {
+                    "type": "string"
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "string"
+                },
+                "privacy": {
+                    "$ref": "#/definitions/domain.ContactPrivacy"
+                },
+                "unit_id": {
+                    "type": "string"
+                },
+                "unit_name": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                },
+                "work_email": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.ContactUnit": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "parent_unit_id": {
+                    "type": "string"
+                },
+                "unit_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.ContactVisibility": {
+            "type": "string",
+            "enum": [
+                "private",
+                "admins",
+                "managers",
+                "company"
+            ],
+            "x-enum-varnames": [
+                "ContactPrivate",
+                "ContactAdmins",
+                "ContactManagers",
+                "ContactCompany"
+            ]
         },
         "domain.ContentBlock": {
             "type": "object",
@@ -28112,113 +25625,22 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.Conversation": {
+        "domain.CreateDocumentRequest": {
             "type": "object",
+            "required": [
+                "name"
+            ],
             "properties": {
-                "created_at": {
+                "folder_id": {
                     "type": "string"
                 },
-                "created_by": {
-                    "type": "integer"
-                },
-                "id": {
+                "format": {
                     "type": "string"
                 },
-                "type": {
-                    "description": "personal or group",
+                "name": {
                     "type": "string"
                 },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "domain.ConversationView": {
-            "type": "object",
-            "properties": {
-                "ai_model": {
-                    "description": "AI Chat fields",
-                    "type": "string"
-                },
-                "ai_title": {
-                    "type": "string"
-                },
-                "channel_avatar": {
-                    "type": "string"
-                },
-                "channel_id": {
-                    "description": "Channel fields",
-                    "type": "string"
-                },
-                "channel_name": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "group_avatar": {
-                    "type": "string"
-                },
-                "group_id": {
-                    "type": "string"
-                },
-                "group_name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "is_channel": {
-                    "type": "boolean"
-                },
-                "is_muted": {
-                    "type": "boolean"
-                },
-                "is_pinned": {
-                    "type": "boolean"
-                },
-                "last_message": {
-                    "$ref": "#/definitions/domain.MessageView"
-                },
-                "last_post": {
-                    "description": "last post for channel type",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/domain.ChannelPost"
-                        }
-                    ]
-                },
-                "last_seen_at": {
-                    "description": "\u003c-- Added for mobile status sync",
-                    "type": "string"
-                },
-                "mention_count": {
-                    "type": "integer"
-                },
-                "my_channel_role": {
-                    "description": "\"owner\"|\"admin\"|\"subscriber\"",
-                    "type": "string"
-                },
-                "peer_avatar": {
-                    "type": "string"
-                },
-                "peer_full_name": {
-                    "type": "string"
-                },
-                "peer_id": {
-                    "type": "integer"
-                },
-                "peer_username": {
-                    "type": "string"
-                },
-                "type": {
-                    "description": "\"personal\" | \"group\" | \"ai\" | \"support\" | \"channel\"",
-                    "type": "string"
-                },
-                "unread_count": {
-                    "type": "integer"
-                },
-                "updated_at": {
+                "template_id": {
                     "type": "string"
                 }
             }
@@ -28286,6 +25708,9 @@ const docTemplate = `{
                 "color": {
                     "type": "string"
                 },
+                "default_attendance": {
+                    "type": "string"
+                },
                 "description": {
                     "type": "string"
                 },
@@ -28329,6 +25754,21 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.CreateInvitationRequest": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "maxLength": 254
+                },
+                "team_id": {
                     "type": "string"
                 }
             }
@@ -28407,6 +25847,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "photo_url": {
+                    "type": "string"
+                },
+                "site_id": {
                     "type": "string"
                 }
             }
@@ -28498,6 +25944,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "color": {
+                    "type": "string"
+                },
+                "default_attendance": {
                     "type": "string"
                 },
                 "description": {
@@ -28779,6 +26228,119 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.DirectoryConfig": {
+            "type": "object",
+            "properties": {
+                "attributes": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "base_dn": {
+                    "type": "string"
+                },
+                "bind_dn": {
+                    "type": "string"
+                },
+                "ca_cert_pem": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "filter": {
+                    "type": "string"
+                },
+                "has_bind_password": {
+                    "type": "boolean"
+                },
+                "last_sync_at": {
+                    "type": "string"
+                },
+                "last_sync_count": {
+                    "type": "integer"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.DirectoryConfigRequest": {
+            "type": "object",
+            "properties": {
+                "attributes": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "base_dn": {
+                    "type": "string"
+                },
+                "bind_dn": {
+                    "type": "string"
+                },
+                "bind_password": {
+                    "type": "string"
+                },
+                "ca_cert_pem": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "filter": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.DirectorySyncRequest": {
+            "type": "object",
+            "properties": {
+                "dry_run": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "domain.DocumentTemplate": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "type": "integer"
+                },
+                "file_id": {
+                    "type": "string"
+                },
+                "format": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "organization_id": {
+                    "type": "string"
+                }
+            }
+        },
         "domain.DriveActivityAction": {
             "type": "string",
             "enum": [
@@ -28956,6 +26518,35 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.DriveFileVersion": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "created_by": {
+                    "type": "integer"
+                },
+                "created_by_name": {
+                    "type": "string"
+                },
+                "file_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_current": {
+                    "type": "boolean"
+                },
+                "size": {
+                    "type": "integer"
+                },
+                "version": {
+                    "type": "integer"
+                }
+            }
+        },
         "domain.DriveItem": {
             "type": "object",
             "properties": {
@@ -29036,6 +26627,10 @@ const docTemplate = `{
                 "is_context": {
                     "type": "boolean"
                 },
+                "locator": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
                 "parent_content": {
                     "type": "string"
                 },
@@ -29063,6 +26658,7 @@ const docTemplate = `{
                 },
                 "file_ids": {
                     "type": "array",
+                    "maxItems": 32,
                     "items": {
                         "type": "string"
                     }
@@ -29082,6 +26678,12 @@ const docTemplate = `{
         "domain.DriveSearchQueryResponse": {
             "type": "object",
             "properties": {
+                "incomplete": {
+                    "type": "boolean"
+                },
+                "indexing": {
+                    "type": "boolean"
+                },
                 "question": {
                     "type": "string"
                 },
@@ -29093,6 +26695,12 @@ const docTemplate = `{
                 },
                 "total_files": {
                     "type": "integer"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
@@ -29136,6 +26744,15 @@ const docTemplate = `{
                 },
                 "can_upload": {
                     "type": "boolean"
+                },
+                "company_free_bytes": {
+                    "type": "integer"
+                },
+                "company_quota_bytes": {
+                    "type": "integer"
+                },
+                "company_used_bytes": {
+                    "type": "integer"
                 },
                 "free_bytes": {
                     "type": "integer"
@@ -29397,6 +27014,35 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.EmploymentAdmission": {
+            "type": "object",
+            "properties": {
+                "allowed": {
+                    "type": "boolean"
+                },
+                "cancelled": {
+                    "type": "boolean"
+                },
+                "employee_id": {
+                    "type": "integer"
+                },
+                "organization_id": {
+                    "type": "string"
+                },
+                "request_id": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "integer"
+                },
+                "start_date": {
+                    "type": "string"
+                },
+                "timezone": {
+                    "type": "string"
+                }
+            }
+        },
         "domain.EmptyTrashResponse": {
             "description": "Result of emptying trash",
             "type": "object",
@@ -29446,6 +27092,9 @@ const docTemplate = `{
         "domain.Event": {
             "type": "object",
             "properties": {
+                "attendance_summary": {
+                    "$ref": "#/definitions/domain.AttendanceSummary"
+                },
                 "attendees": {
                     "type": "array",
                     "items": {
@@ -29557,12 +27206,21 @@ const docTemplate = `{
                 },
                 "username": {
                     "type": "string"
+                },
+                "warnings": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
         "domain.EventAttendee": {
             "type": "object",
             "properties": {
+                "attendance": {
+                    "type": "string"
+                },
                 "comment": {
                     "type": "string"
                 },
@@ -29834,42 +27492,6 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.Group": {
-            "type": "object",
-            "properties": {
-                "avatar_url": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "created_by": {
-                    "type": "integer"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "is_active": {
-                    "type": "boolean"
-                },
-                "max_members": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "type": {
-                    "description": "public, private",
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
         "domain.GroupCalendarWithSettings": {
             "type": "object",
             "properties": {
@@ -29887,54 +27509,12 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.GroupDetails": {
-            "type": "object",
-            "properties": {
-                "avatar_url": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "created_by": {
-                    "type": "integer"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "is_active": {
-                    "type": "boolean"
-                },
-                "max_members": {
-                    "type": "integer"
-                },
-                "member_count": {
-                    "type": "integer"
-                },
-                "members": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.GroupMemberDetail"
-                    }
-                },
-                "name": {
-                    "type": "string"
-                },
-                "type": {
-                    "description": "public, private",
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
         "domain.GroupEventInfo": {
             "type": "object",
             "properties": {
+                "attendance_summary": {
+                    "$ref": "#/definitions/domain.AttendanceSummary"
+                },
                 "attendees": {
                     "type": "array",
                     "items": {
@@ -30055,187 +27635,12 @@ const docTemplate = `{
                 },
                 "username": {
                     "type": "string"
-                }
-            }
-        },
-        "domain.GroupEventsResponse": {
-            "type": "object",
-            "properties": {
-                "count": {
-                    "type": "integer"
                 },
-                "events": {
+                "warnings": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/domain.Event"
+                        "type": "string"
                     }
-                }
-            }
-        },
-        "domain.GroupMemberDetail": {
-            "type": "object",
-            "properties": {
-                "absence_status": {
-                    "type": "string"
-                },
-                "availability_status": {
-                    "type": "string"
-                },
-                "avatar_url": {
-                    "type": "string"
-                },
-                "bio": {
-                    "type": "string"
-                },
-                "can_view_full_drive_activity": {
-                    "type": "boolean"
-                },
-                "can_view_full_drive_activity_by_position": {
-                    "type": "boolean"
-                },
-                "can_view_full_drive_activity_effective": {
-                    "type": "boolean"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "department_name": {
-                    "type": "string"
-                },
-                "doc_type": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "first_name": {
-                    "type": "string"
-                },
-                "full_name": {
-                    "type": "string"
-                },
-                "full_name_local": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "iin": {
-                    "type": "string"
-                },
-                "is_active": {
-                    "type": "boolean"
-                },
-                "is_first_login": {
-                    "type": "boolean"
-                },
-                "is_support": {
-                    "type": "boolean"
-                },
-                "job_name": {
-                    "type": "string"
-                },
-                "keycloak_id": {
-                    "type": "string"
-                },
-                "last_login_at": {
-                    "type": "string"
-                },
-                "last_name": {
-                    "type": "string"
-                },
-                "last_order_date": {
-                    "type": "string"
-                },
-                "last_order_number": {
-                    "type": "string"
-                },
-                "last_seen_at": {
-                    "type": "string"
-                },
-                "manager_id": {
-                    "type": "integer"
-                },
-                "organization_id": {
-                    "type": "string"
-                },
-                "organization_name": {
-                    "type": "string"
-                },
-                "person_status": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "string"
-                },
-                "position_name": {
-                    "type": "string"
-                },
-                "role": {
-                    "type": "string"
-                },
-                "sub_name": {
-                    "type": "string"
-                },
-                "team_id": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "domain.GroupView": {
-            "type": "object",
-            "properties": {
-                "avatar_url": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "created_by": {
-                    "type": "integer"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "is_active": {
-                    "type": "boolean"
-                },
-                "is_muted": {
-                    "type": "boolean"
-                },
-                "last_message": {
-                    "$ref": "#/definitions/domain.MessageView"
-                },
-                "max_members": {
-                    "type": "integer"
-                },
-                "member_count": {
-                    "type": "integer"
-                },
-                "member_role": {
-                    "type": "string"
-                },
-                "mention_count": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "type": {
-                    "description": "public, private",
-                    "type": "string"
-                },
-                "unread_count": {
-                    "type": "integer"
-                },
-                "updated_at": {
-                    "type": "string"
                 }
             }
         },
@@ -30488,6 +27893,37 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.InvitationPage": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.OrganizationInvitation"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.InvitationResult": {
+            "type": "object",
+            "properties": {
+                "already_member": {
+                    "type": "boolean"
+                },
+                "organization_id": {
+                    "type": "string"
+                },
+                "registered": {
+                    "type": "boolean"
+                },
+                "user_id": {
+                    "type": "integer"
+                }
+            }
+        },
         "domain.KanbanColumn": {
             "type": "object",
             "properties": {
@@ -30667,6 +28103,9 @@ const docTemplate = `{
         "domain.MeetingRoom": {
             "type": "object",
             "properties": {
+                "address": {
+                    "type": "string"
+                },
                 "capacity": {
                     "type": "integer"
                 },
@@ -30700,216 +28139,20 @@ const docTemplate = `{
                 "name": {
                     "type": "string"
                 },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "domain.MessageReplyNode": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "$ref": "#/definitions/domain.MessageView"
-                },
-                "replies": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.MessageReplyNode"
-                    }
-                }
-            }
-        },
-        "domain.MessageSearchResult": {
-            "type": "object",
-            "properties": {
-                "content": {
+                "organization_id": {
                     "type": "string"
                 },
-                "conversation_id": {
+                "photo_url": {
                     "type": "string"
                 },
-                "created_at": {
+                "site_id": {
                     "type": "string"
                 },
-                "id": {
-                    "type": "string"
-                },
-                "sender_full_name": {
-                    "type": "string"
-                },
-                "sender_id": {
-                    "type": "integer"
-                },
-                "sender_username": {
-                    "type": "string"
-                },
-                "type": {
+                "site_name": {
                     "type": "string"
                 },
                 "updated_at": {
                     "type": "string"
-                }
-            }
-        },
-        "domain.MessageThreadResponse": {
-            "type": "object",
-            "properties": {
-                "replies": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.MessageReplyNode"
-                    }
-                },
-                "reply_count": {
-                    "type": "integer"
-                },
-                "root": {
-                    "$ref": "#/definitions/domain.MessageView"
-                },
-                "truncated": {
-                    "type": "boolean"
-                }
-            }
-        },
-        "domain.MessageView": {
-            "type": "object",
-            "properties": {
-                "attachment_name": {
-                    "type": "string"
-                },
-                "attachment_size": {
-                    "type": "integer"
-                },
-                "attachment_type": {
-                    "type": "string"
-                },
-                "attachment_url": {
-                    "type": "string"
-                },
-                "chat_name": {
-                    "type": "string"
-                },
-                "chat_type": {
-                    "type": "string"
-                },
-                "content": {
-                    "type": "string"
-                },
-                "content_hash": {
-                    "type": "string"
-                },
-                "conversation_id": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "delivered_count": {
-                    "type": "integer"
-                },
-                "edited_at": {
-                    "type": "string"
-                },
-                "encrypted_keys": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "expires_at": {
-                    "type": "string"
-                },
-                "highlight": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "is_deleted": {
-                    "type": "boolean"
-                },
-                "is_edited": {
-                    "type": "boolean"
-                },
-                "is_ephemeral": {
-                    "type": "boolean"
-                },
-                "is_forwarded": {
-                    "type": "boolean"
-                },
-                "is_read": {
-                    "description": "Added for frontend convenience",
-                    "type": "boolean"
-                },
-                "metadata": {
-                    "description": "JSON metadata",
-                    "type": "string"
-                },
-                "original_sender_full_name": {
-                    "type": "string"
-                },
-                "original_sender_id": {
-                    "type": "integer"
-                },
-                "reactions": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.ReactionSummary"
-                    }
-                },
-                "read_by_count": {
-                    "type": "integer"
-                },
-                "relevance_score": {
-                    "type": "number"
-                },
-                "reply_to": {
-                    "$ref": "#/definitions/domain.MessageView"
-                },
-                "reply_to_id": {
-                    "type": "string"
-                },
-                "sender_avatar": {
-                    "type": "string"
-                },
-                "sender_full_name": {
-                    "type": "string"
-                },
-                "sender_id": {
-                    "type": "integer"
-                },
-                "sender_username": {
-                    "type": "string"
-                },
-                "sequence_number": {
-                    "type": "integer"
-                },
-                "ttl_seconds": {
-                    "type": "integer"
-                },
-                "type": {
-                    "description": "text, image, video, file, audio, etc.",
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "domain.MessageViewer": {
-            "type": "object",
-            "properties": {
-                "avatar_url": {
-                    "type": "string"
-                },
-                "full_name": {
-                    "type": "string"
-                },
-                "read_at": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "integer"
                 }
             }
         },
@@ -31377,7 +28620,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "type": {
-                    "description": "text, cards, test, table, report",
+                    "description": "text, cards, test, table, report, compare, presentation, chart, mermaid",
                     "type": "string"
                 }
             }
@@ -31461,6 +28704,81 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.OfficeParticipant": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "image": {
+                    "type": "string"
+                },
+                "last_seen_at": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.OfficePresenceRequest": {
+            "type": "object",
+            "required": [
+                "action"
+            ],
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": [
+                        "heartbeat",
+                        "leave"
+                    ]
+                }
+            }
+        },
+        "domain.OfficeRecoveryRequest": {
+            "type": "object",
+            "required": [
+                "expected_version"
+            ],
+            "properties": {
+                "expected_version": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            }
+        },
+        "domain.OfficeSaveState": {
+            "type": "object",
+            "properties": {
+                "failed_at": {
+                    "type": "string"
+                },
+                "failure_kind": {
+                    "type": "string"
+                },
+                "saved_at": {
+                    "type": "string"
+                },
+                "version": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.OfficeUser": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "image": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "domain.Organization": {
             "type": "object",
             "properties": {
@@ -31496,6 +28814,41 @@ const docTemplate = `{
                 }
             }
         },
+        "domain.OrganizationInvitation": {
+            "type": "object",
+            "properties": {
+                "accepted_at": {
+                    "type": "string"
+                },
+                "accepted_by": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "expires_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "organization_id": {
+                    "type": "string"
+                },
+                "organization_name": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "team_id": {
+                    "type": "string"
+                }
+            }
+        },
         "domain.OrganizationMember": {
             "type": "object",
             "properties": {
@@ -31511,6 +28864,9 @@ const docTemplate = `{
                 "email": {
                     "type": "string"
                 },
+                "first_name": {
+                    "type": "string"
+                },
                 "full_name": {
                     "type": "string"
                 },
@@ -31521,6 +28877,9 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "keycloak_id": {
+                    "type": "string"
+                },
+                "last_name": {
                     "type": "string"
                 },
                 "manager_id": {
@@ -31556,6 +28915,87 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.OrganizationTree": {
+            "type": "object",
+            "properties": {
+                "active_employee_count": {
+                    "type": "integer"
+                },
+                "can_manage_structure": {
+                    "type": "boolean"
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.OrganizationTreeNode"
+                    }
+                },
+                "organization_id": {
+                    "type": "string"
+                },
+                "total_units": {
+                    "type": "integer"
+                },
+                "unassigned_employee_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "domain.OrganizationTreeManager": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "full_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "position": {
+                    "type": "string"
+                }
+            }
+        },
+        "domain.OrganizationTreeNode": {
+            "type": "object",
+            "properties": {
+                "children": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/domain.OrganizationTreeNode"
+                    }
+                },
+                "description": {
+                    "type": "string"
+                },
+                "display_order": {
+                    "type": "integer"
+                },
+                "employee_count": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "manager": {
+                    "$ref": "#/definitions/domain.OrganizationTreeManager"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "parent_unit_id": {
+                    "type": "string"
+                },
+                "subtree_employee_count": {
+                    "type": "integer"
+                },
+                "unit_type": {
                     "type": "string"
                 }
             }
@@ -31748,65 +29188,6 @@ const docTemplate = `{
                 "PersonalRecordingStatusFailed",
                 "PersonalRecordingStatusAborted"
             ]
-        },
-        "domain.PinnedChat": {
-            "type": "object",
-            "properties": {
-                "chat_id": {
-                    "type": "string"
-                },
-                "chat_type": {
-                    "description": "conversation or group",
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "domain.PinnedMessage": {
-            "type": "object",
-            "properties": {
-                "chat_id": {
-                    "type": "string"
-                },
-                "chat_type": {
-                    "type": "string"
-                },
-                "content": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "message_id": {
-                    "type": "string"
-                },
-                "pinned_by": {
-                    "type": "integer"
-                },
-                "position": {
-                    "type": "integer"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
         },
         "domain.PlatformOrganization": {
             "type": "object",
@@ -32144,39 +29525,18 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.ReactionSummary": {
+        "domain.PublishDocumentTemplateRequest": {
             "type": "object",
+            "required": [
+                "file_id",
+                "name"
+            ],
             "properties": {
-                "count": {
-                    "type": "integer"
-                },
-                "reacted": {
-                    "description": "Whether current user reacted",
-                    "type": "boolean"
-                },
-                "reaction": {
+                "file_id": {
                     "type": "string"
                 },
-                "users": {
-                    "description": "Detailed users who reacted",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.ReactionUser"
-                    }
-                }
-            }
-        },
-        "domain.ReactionUser": {
-            "type": "object",
-            "properties": {
-                "avatar": {
+                "name": {
                     "type": "string"
-                },
-                "full_name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
                 }
             }
         },
@@ -32276,6 +29636,12 @@ const docTemplate = `{
                 "managed": {
                     "type": "boolean"
                 },
+                "module_available": {
+                    "type": "boolean"
+                },
+                "module_enabled": {
+                    "type": "boolean"
+                },
                 "organization_active": {
                     "type": "boolean"
                 },
@@ -32316,6 +29682,9 @@ const docTemplate = `{
                 "status"
             ],
             "properties": {
+                "attendance": {
+                    "type": "string"
+                },
                 "comment": {
                     "description": "optional",
                     "type": "string"
@@ -32574,10 +29943,9 @@ const docTemplate = `{
                     }
                 },
                 "messages": {
+                    "description": "Messages is retained as an empty array for existing search clients.",
                     "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.MessageSearchResult"
-                    }
+                    "items": {}
                 },
                 "notes": {
                     "type": "array",
@@ -32707,58 +30075,6 @@ const docTemplate = `{
             ],
             "properties": {
                 "minutes_before": {
-                    "type": "integer"
-                }
-            }
-        },
-        "domain.SharedMediaItem": {
-            "type": "object",
-            "properties": {
-                "attachment_size": {
-                    "type": "integer"
-                },
-                "attachment_type": {
-                    "type": "string"
-                },
-                "attachment_url": {
-                    "type": "string"
-                },
-                "encrypted_keys": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "message_id": {
-                    "type": "string"
-                },
-                "sender_id": {
-                    "type": "integer"
-                },
-                "sender_name": {
-                    "type": "string"
-                },
-                "sent_at": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string"
-                }
-            }
-        },
-        "domain.SharedMediaResponse": {
-            "type": "object",
-            "properties": {
-                "has_more": {
-                    "type": "boolean"
-                },
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.SharedMediaItem"
-                    }
-                },
-                "total": {
                     "type": "integer"
                 }
             }
@@ -33167,13 +30483,34 @@ const docTemplate = `{
                 "source_author_sub": {
                     "type": "string"
                 },
+                "source_closed_at": {
+                    "type": "string"
+                },
+                "source_completed_at": {
+                    "type": "string"
+                },
                 "source_department_id": {
                     "type": "string"
                 },
                 "source_document_id": {
                     "type": "string"
                 },
+                "source_due_date": {
+                    "type": "string"
+                },
+                "source_organization_id": {
+                    "type": "string"
+                },
+                "source_revision": {
+                    "type": "integer"
+                },
+                "source_status": {
+                    "type": "string"
+                },
                 "source_system": {
+                    "type": "string"
+                },
+                "source_timezone": {
                     "type": "string"
                 },
                 "source_url": {
@@ -33565,14 +30902,46 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.UpdateChatThemeRequest": {
+        "domain.UpdateContactRequest": {
             "type": "object",
-            "required": [
-                "chatTheme"
-            ],
             "properties": {
-                "chatTheme": {
-                    "$ref": "#/definitions/domain.ChatThemeConfig"
+                "personal_email": {
+                    "type": "string"
+                },
+                "personal_email_visibility": {
+                    "enum": [
+                        "private",
+                        "admins",
+                        "managers",
+                        "company"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.ContactVisibility"
+                        }
+                    ]
+                },
+                "personal_phone": {
+                    "type": "string"
+                },
+                "personal_phone_visibility": {
+                    "enum": [
+                        "private",
+                        "admins",
+                        "managers",
+                        "company"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/domain.ContactVisibility"
+                        }
+                    ]
+                },
+                "phone": {
+                    "type": "string"
+                },
+                "work_email": {
+                    "type": "string"
                 }
             }
         },
@@ -33612,6 +30981,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "color": {
+                    "type": "string"
+                },
+                "default_attendance": {
                     "type": "string"
                 },
                 "description": {
@@ -33727,6 +31099,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "photo_url": {
+                    "type": "string"
+                },
+                "site_id": {
                     "type": "string"
                 }
             }
@@ -34062,6 +31440,9 @@ const docTemplate = `{
                 "email": {
                     "type": "string"
                 },
+                "employment_admission": {
+                    "$ref": "#/definitions/domain.EmploymentAdmission"
+                },
                 "first_name": {
                     "type": "string"
                 },
@@ -34093,6 +31474,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "keycloak_id": {
+                    "type": "string"
+                },
+                "language": {
                     "type": "string"
                 },
                 "last_login_at": {
@@ -34457,6 +31841,9 @@ const docTemplate = `{
                 "email": {
                     "type": "string"
                 },
+                "employment_admission": {
+                    "$ref": "#/definitions/domain.EmploymentAdmission"
+                },
                 "first_name": {
                     "type": "string"
                 },
@@ -34485,6 +31872,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "keycloak_id": {
+                    "type": "string"
+                },
+                "language": {
                     "type": "string"
                 },
                 "last_login_at": {
@@ -34654,17 +32044,6 @@ const docTemplate = `{
                 }
             }
         },
-        "domain.WebHistorySyncItem": {
-            "type": "object",
-            "properties": {
-                "encrypted_key_for_web": {
-                    "type": "string"
-                },
-                "message_id": {
-                    "type": "string"
-                }
-            }
-        },
         "domain.WorkloadDistributionItem": {
             "type": "object",
             "properties": {
@@ -34808,50 +32187,6 @@ const docTemplate = `{
                 }
             }
         },
-        "handler.AddChatToFolderRequest": {
-            "type": "object",
-            "required": [
-                "chat_id",
-                "chat_type"
-            ],
-            "properties": {
-                "chat_id": {
-                    "type": "string"
-                },
-                "chat_type": {
-                    "type": "string",
-                    "enum": [
-                        "conversation",
-                        "group"
-                    ]
-                }
-            }
-        },
-        "handler.AddGroupMemberRequest": {
-            "type": "object",
-            "properties": {
-                "user_id": {
-                    "type": "integer"
-                },
-                "user_ids": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                }
-            }
-        },
-        "handler.AddReactionRequest": {
-            "type": "object",
-            "required": [
-                "reaction"
-            ],
-            "properties": {
-                "reaction": {
-                    "type": "string"
-                }
-            }
-        },
         "handler.AudioRecordingStatusResponse": {
             "type": "object",
             "properties": {
@@ -34957,54 +32292,11 @@ const docTemplate = `{
                 "model": {
                     "type": "string"
                 },
+                "section_id": {
+                    "type": "string"
+                },
                 "title": {
                     "type": "string"
-                }
-            }
-        },
-        "handler.CreateConversationRequest": {
-            "type": "object",
-            "required": [
-                "peer_id"
-            ],
-            "properties": {
-                "peer_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "handler.CreateFolderRequest": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "handler.CreateGroupRequest": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "max_members": {
-                    "type": "integer"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string",
-                    "enum": [
-                        "public",
-                        "private"
-                    ]
                 }
             }
         },
@@ -35041,38 +32333,6 @@ const docTemplate = `{
                 }
             }
         },
-        "handler.DeleteMessagesRequest": {
-            "type": "object",
-            "required": [
-                "message_ids"
-            ],
-            "properties": {
-                "message_ids": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "scope": {
-                    "type": "string",
-                    "enum": [
-                        "me",
-                        "everyone"
-                    ]
-                }
-            }
-        },
-        "handler.EditMessageRequest": {
-            "type": "object",
-            "required": [
-                "content"
-            ],
-            "properties": {
-                "content": {
-                    "type": "string"
-                }
-            }
-        },
         "handler.EndCallRequest": {
             "type": "object",
             "properties": {
@@ -35089,14 +32349,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "session_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "handler.ErrorResponse": {
-            "type": "object",
-            "properties": {
-                "error": {
                     "type": "string"
                 }
             }
@@ -35147,101 +32399,6 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/domain.UserResponse"
                     }
-                }
-            }
-        },
-        "handler.ForwardMessagePayload": {
-            "type": "object",
-            "required": [
-                "content",
-                "original_message_id",
-                "target_chat_id"
-            ],
-            "properties": {
-                "content": {
-                    "type": "string"
-                },
-                "content_hash": {
-                    "type": "string"
-                },
-                "keys": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "original_message_id": {
-                    "type": "string"
-                },
-                "target_chat_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "handler.ForwardMessagesRequest": {
-            "type": "object",
-            "properties": {
-                "message_ids": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "messages": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/handler.ForwardMessagePayload"
-                    }
-                },
-                "target_chat_ids": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
-        "handler.GroupSendMessageRequest": {
-            "type": "object",
-            "properties": {
-                "attachment_name": {
-                    "type": "string"
-                },
-                "attachment_size": {
-                    "type": "integer"
-                },
-                "attachment_type": {
-                    "type": "string"
-                },
-                "attachment_url": {
-                    "type": "string"
-                },
-                "content": {
-                    "type": "string"
-                },
-                "content_hash": {
-                    "description": "Hash of the plaintext content",
-                    "type": "string"
-                },
-                "metadata": {
-                    "description": "JSON-метаданные (например, mentions)",
-                    "type": "string"
-                },
-                "reply_to_id": {
-                    "description": "ID сообщения, на которое отвечаем",
-                    "type": "string"
-                },
-                "type": {
-                    "type": "string",
-                    "enum": [
-                        "text",
-                        "image",
-                        "video",
-                        "file",
-                        "audio",
-                        "voice",
-                        "video_message"
-                    ]
                 }
             }
         },
@@ -35453,11 +32610,43 @@ const docTemplate = `{
                 }
             }
         },
-        "handler.MuteChatRequest": {
+        "handler.PasswordRecoveryCompleteRequest": {
             "type": "object",
+            "required": [
+                "new_password",
+                "token"
+            ],
             "properties": {
-                "mute": {
-                    "type": "boolean"
+                "new_password": {
+                    "type": "string",
+                    "maxLength": 128,
+                    "minLength": 8
+                },
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.PasswordRecoveryProof": {
+            "type": "object",
+            "required": [
+                "token"
+            ],
+            "properties": {
+                "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.PasswordRecoveryRequest": {
+            "type": "object",
+            "required": [
+                "login"
+            ],
+            "properties": {
+                "login": {
+                    "type": "string",
+                    "maxLength": 254
                 }
             }
         },
@@ -35510,50 +32699,6 @@ const docTemplate = `{
                 }
             }
         },
-        "handler.PinChatRequest": {
-            "type": "object",
-            "required": [
-                "chat_id",
-                "chat_type"
-            ],
-            "properties": {
-                "chat_id": {
-                    "type": "string"
-                },
-                "chat_type": {
-                    "type": "string",
-                    "enum": [
-                        "personal",
-                        "group",
-                        "channel"
-                    ]
-                }
-            }
-        },
-        "handler.PinMessageRequest": {
-            "type": "object",
-            "required": [
-                "chat_id",
-                "chat_type",
-                "message_id"
-            ],
-            "properties": {
-                "chat_id": {
-                    "type": "string"
-                },
-                "chat_type": {
-                    "type": "string",
-                    "enum": [
-                        "personal",
-                        "group",
-                        "channel"
-                    ]
-                },
-                "message_id": {
-                    "type": "string"
-                }
-            }
-        },
         "handler.RecordRequest": {
             "type": "object",
             "required": [
@@ -35562,6 +32707,50 @@ const docTemplate = `{
             "properties": {
                 "room_name": {
                     "type": "string"
+                }
+            }
+        },
+        "handler.RecoveryEmailCodeRequest": {
+            "type": "object",
+            "required": [
+                "password",
+                "purpose"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "maxLength": 254
+                },
+                "password": {
+                    "type": "string",
+                    "maxLength": 1024
+                },
+                "purpose": {
+                    "type": "string",
+                    "enum": [
+                        "bind",
+                        "remove"
+                    ]
+                }
+            }
+        },
+        "handler.RecoveryEmailConfirmRequest": {
+            "type": "object",
+            "required": [
+                "code",
+                "id",
+                "password"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string",
+                    "maxLength": 1024
                 }
             }
         },
@@ -35919,88 +33108,6 @@ const docTemplate = `{
                 }
             }
         },
-        "handler.SendMessageRequest": {
-            "type": "object",
-            "properties": {
-                "attachment_name": {
-                    "type": "string"
-                },
-                "attachment_size": {
-                    "type": "integer"
-                },
-                "attachment_type": {
-                    "type": "string"
-                },
-                "attachment_url": {
-                    "type": "string"
-                },
-                "content": {
-                    "type": "string"
-                },
-                "content_hash": {
-                    "description": "Hash of the plaintext content for searching",
-                    "type": "string"
-                },
-                "is_ephemeral": {
-                    "description": "Flag for disappearing messages",
-                    "type": "boolean"
-                },
-                "keys": {
-                    "description": "Encrypted keys for multi-device E2EE",
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "metadata": {
-                    "description": "JSON metadata, for example {\"mentions\":[\"username\"]}",
-                    "type": "string"
-                },
-                "reply_to_id": {
-                    "description": "ID сообщения, на которое отвечаем",
-                    "type": "string"
-                },
-                "ttl_seconds": {
-                    "description": "Time to live in seconds after being read",
-                    "type": "integer"
-                },
-                "type": {
-                    "type": "string",
-                    "enum": [
-                        "text",
-                        "image",
-                        "video",
-                        "file",
-                        "audio",
-                        "voice",
-                        "video_message"
-                    ]
-                }
-            }
-        },
-        "handler.ShareItemRequest": {
-            "type": "object",
-            "required": [
-                "item_id",
-                "item_type",
-                "target_chat_id"
-            ],
-            "properties": {
-                "comment": {
-                    "type": "string"
-                },
-                "item_id": {
-                    "type": "string"
-                },
-                "item_type": {
-                    "description": "task, event, note",
-                    "type": "string"
-                },
-                "target_chat_id": {
-                    "type": "string"
-                }
-            }
-        },
         "handler.StartAudioRecordingRequest": {
             "type": "object",
             "required": [
@@ -36065,17 +33172,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "url": {
-                    "type": "string"
-                }
-            }
-        },
-        "handler.StartGroupCallRequest": {
-            "type": "object",
-            "required": [
-                "group_id"
-            ],
-            "properties": {
-                "group_id": {
                     "type": "string"
                 }
             }
@@ -36159,26 +33255,6 @@ const docTemplate = `{
                 }
             }
         },
-        "handler.SyncMessagesRequest": {
-            "type": "object",
-            "required": [
-                "device_id"
-            ],
-            "properties": {
-                "after_sequence": {
-                    "type": "integer"
-                },
-                "conversation_id": {
-                    "type": "string"
-                },
-                "device_id": {
-                    "type": "string"
-                },
-                "limit": {
-                    "type": "integer"
-                }
-            }
-        },
         "handler.UpdateAvatarRequest": {
             "type": "object",
             "required": [
@@ -36201,43 +33277,6 @@ const docTemplate = `{
                 }
             }
         },
-        "handler.UpdateFolderRequest": {
-            "type": "object",
-            "required": [
-                "name"
-            ],
-            "properties": {
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "handler.UpdateGroupMemberRoleRequest": {
-            "type": "object",
-            "required": [
-                "role"
-            ],
-            "properties": {
-                "role": {
-                    "type": "string",
-                    "enum": [
-                        "member",
-                        "admin"
-                    ]
-                }
-            }
-        },
-        "handler.UpdateGroupRequest": {
-            "type": "object",
-            "properties": {
-                "description": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
         "handler.UpdateModelRequest": {
             "type": "object",
             "required": [
@@ -36246,24 +33285,6 @@ const docTemplate = `{
             "properties": {
                 "model": {
                     "type": "string"
-                }
-            }
-        },
-        "handler.UpdateSyncPositionRequest": {
-            "type": "object",
-            "required": [
-                "device_id"
-            ],
-            "properties": {
-                "conversation_id": {
-                    "type": "string"
-                },
-                "device_id": {
-                    "type": "string"
-                },
-                "sequence": {
-                    "type": "integer",
-                    "minimum": 0
                 }
             }
         },
@@ -36404,6 +33425,48 @@ const docTemplate = `{
                         "editor",
                         "manager"
                     ]
+                }
+            }
+        },
+        "handler.driveTagsRequest": {
+            "type": "object",
+            "required": [
+                "tags"
+            ],
+            "properties": {
+                "tags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "handler.invitationAcceptRequest": {
+            "type": "object",
+            "required": [
+                "code",
+                "token"
+            ],
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string",
+                    "maxLength": 100
+                }
+            }
+        },
+        "handler.invitationTokenRequest": {
+            "type": "object",
+            "required": [
+                "token"
+            ],
+            "properties": {
+                "token": {
+                    "type": "string",
+                    "maxLength": 100
                 }
             }
         },
@@ -36575,35 +33638,6 @@ const docTemplate = `{
                 },
                 "type": {
                     "type": "string"
-                }
-            }
-        },
-        "repository.SyncCursor": {
-            "type": "object",
-            "properties": {
-                "conversation_id": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "device_id": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "last_sequence_number": {
-                    "type": "integer"
-                },
-                "last_sync_timestamp": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "integer"
                 }
             }
         },
@@ -36887,73 +33921,6 @@ const docTemplate = `{
             "properties": {
                 "file_id": {
                     "type": "string"
-                }
-            }
-        },
-        "service.BroadcastMessageRequest": {
-            "type": "object",
-            "required": [
-                "content",
-                "recipient_user_ids"
-            ],
-            "properties": {
-                "content": {
-                    "type": "string",
-                    "minLength": 1
-                },
-                "message_type": {
-                    "type": "string",
-                    "enum": [
-                        "text",
-                        "image",
-                        "video",
-                        "file",
-                        "audio"
-                    ]
-                },
-                "recipient_user_ids": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                        "type": "integer"
-                    }
-                }
-            }
-        },
-        "service.BroadcastMessageResponse": {
-            "type": "object",
-            "properties": {
-                "failure_count": {
-                    "type": "integer"
-                },
-                "results": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/service.BroadcastMessageResult"
-                    }
-                },
-                "success_count": {
-                    "type": "integer"
-                }
-            }
-        },
-        "service.BroadcastMessageResult": {
-            "type": "object",
-            "properties": {
-                "conversation_id": {
-                    "type": "string"
-                },
-                "error": {
-                    "type": "string"
-                },
-                "message_id": {
-                    "type": "string"
-                },
-                "success": {
-                    "type": "boolean"
-                },
-                "user_id": {
-                    "type": "integer"
                 }
             }
         },
@@ -37270,6 +34237,260 @@ const docTemplate = `{
                 }
             }
         },
+        "service.NotebookPresetCount": {
+            "type": "object",
+            "properties": {
+                "default": {
+                    "type": "integer"
+                },
+                "max": {
+                    "type": "integer"
+                }
+            }
+        },
+        "service.NotebookResearchJob": {
+            "type": "object",
+            "properties": {
+                "chat_id": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "error": {
+                    "$ref": "#/definitions/service.NotebookResearchJobError"
+                },
+                "finished_at": {
+                    "type": "string"
+                },
+                "job_id": {
+                    "type": "string"
+                },
+                "operation_id": {
+                    "type": "string"
+                },
+                "progress": {
+                    "$ref": "#/definitions/service.NotebookResearchProgress"
+                },
+                "result": {
+                    "$ref": "#/definitions/service.NotebookResearchResponse"
+                },
+                "started_at": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "service.NotebookResearchJobError": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "object"
+                },
+                "code": {
+                    "type": "string"
+                },
+                "http_status": {
+                    "type": "integer"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "service.NotebookResearchProgress": {
+            "type": "object",
+            "properties": {
+                "chunks_done": {
+                    "type": "integer"
+                },
+                "chunks_total": {
+                    "type": "integer"
+                },
+                "stage": {
+                    "type": "string"
+                }
+            }
+        },
+        "service.NotebookResearchRequest": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "type": "integer",
+                    "maximum": 30,
+                    "minimum": 0
+                },
+                "file_ids": {
+                    "type": "array",
+                    "maxItems": 32,
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "focus": {
+                    "type": "string",
+                    "maxLength": 2000
+                },
+                "format": {
+                    "type": "string"
+                },
+                "lang": {
+                    "type": "string",
+                    "maxLength": 8
+                },
+                "mode": {
+                    "type": "string"
+                },
+                "operation_id": {
+                    "type": "string"
+                },
+                "persist": {
+                    "type": "boolean"
+                },
+                "preset": {
+                    "description": "Preset expands a Studio card (see NotebookStudioPresets) into the question\nand format; Question then becomes the preset's focus.",
+                    "type": "string",
+                    "maxLength": 64
+                },
+                "question": {
+                    "type": "string",
+                    "maxLength": 12000
+                }
+            }
+        },
+        "service.NotebookResearchResponse": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "fallback": {
+                    "type": "boolean"
+                },
+                "format": {
+                    "type": "string"
+                },
+                "model": {
+                    "type": "string"
+                },
+                "persisted": {
+                    "type": "boolean"
+                },
+                "sources": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/service.NotebookResearchSource"
+                    }
+                },
+                "stats": {
+                    "$ref": "#/definitions/service.NotebookResearchStats"
+                },
+                "status": {
+                    "description": "Status lets the client keep only real results: no_sources and\nunreadable answers are explanations, not Studio results.",
+                    "type": "string"
+                },
+                "suggestions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "service.NotebookResearchSource": {
+            "type": "object",
+            "properties": {
+                "complete": {
+                    "type": "boolean"
+                },
+                "excerpts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/service.NotebookSourceExcerpt"
+                    }
+                },
+                "file_id": {
+                    "type": "string"
+                },
+                "file_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "revision": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "total_lines": {
+                    "type": "integer"
+                }
+            }
+        },
+        "service.NotebookResearchStats": {
+            "type": "object",
+            "properties": {
+                "chunks_analyzed": {
+                    "type": "integer"
+                },
+                "chunks_total": {
+                    "type": "integer"
+                },
+                "mode": {
+                    "type": "string"
+                }
+            }
+        },
+        "service.NotebookSourceExcerpt": {
+            "type": "object",
+            "properties": {
+                "end_line": {
+                    "type": "integer"
+                },
+                "start_line": {
+                    "type": "integer"
+                },
+                "text": {
+                    "type": "string"
+                }
+            }
+        },
+        "service.NotebookStudioPreset": {
+            "type": "object",
+            "properties": {
+                "count": {
+                    "$ref": "#/definitions/service.NotebookPresetCount"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "format": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "min_sources": {
+                    "type": "integer"
+                },
+                "prompt": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
         "service.RedeemWebPairingSessionRequest": {
             "type": "object",
             "properties": {
@@ -37396,6 +34617,9 @@ const docTemplate = `{
                 "message": {
                     "type": "string"
                 },
+                "operation_id": {
+                    "type": "string"
+                },
                 "session_id": {
                     "description": "For stateful server-side history",
                     "type": "string"
@@ -37440,63 +34664,6 @@ const docTemplate = `{
                 },
                 "type": {
                     "description": "e.g., \"user_list\", \"task_list\", \"event_preview\", \"action_confirmation\"",
-                    "type": "string"
-                }
-            }
-        },
-        "service.SyncResponse": {
-            "type": "object",
-            "properties": {
-                "has_more": {
-                    "type": "boolean"
-                },
-                "last_sequence": {
-                    "type": "integer"
-                },
-                "messages": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.MessageView"
-                    }
-                },
-                "synced_at": {
-                    "type": "string"
-                },
-                "total_available": {
-                    "type": "integer"
-                }
-            }
-        },
-        "service.SyncWebPairingHistoryRequest": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/domain.WebHistorySyncItem"
-                    }
-                },
-                "web_device_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "service.SyncWebPairingHistoryResponse": {
-            "type": "object",
-            "properties": {
-                "pairing_id": {
-                    "type": "string"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "synced_at": {
-                    "type": "string"
-                },
-                "synced_count": {
-                    "type": "integer"
-                },
-                "web_device_id": {
                     "type": "string"
                 }
             }

@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/west6ide/workspace-backend/internal/apperrors"
 	"github.com/west6ide/workspace-backend/internal/auth"
 	"github.com/west6ide/workspace-backend/internal/config"
@@ -349,9 +348,6 @@ func (s *authHandlerUserRepoStub) GetNeverLoggedIn(_ context.Context) ([]*domain
 	return nil, nil
 }
 
-func (s *authHandlerUserRepoStub) ShareConversation(_ context.Context, _, _ int64) (bool, error) {
-	return false, nil
-}
 func (s *authHandlerUserRepoStub) ExportMinistryUsers(_ context.Context, _ int64, _ []int64, _ []int64, _ []int64) ([]domain.MinistryUserExportRow, error) {
 	return nil, nil
 }
@@ -367,18 +363,6 @@ func (s *authHandlerUserRepoStub) UpdateRole(_ context.Context, _ int64, _ domai
 func (s *authHandlerUserRepoStub) UpdateMinistryID(_ context.Context, _, _ int64) error {
 	return nil
 }
-
-type authHandlerChatServiceStub struct{}
-
-func (s *authHandlerChatServiceStub) CreateOrGetConversation(_ context.Context, user1ID, user2ID int64) (*domain.Conversation, error) {
-	return &domain.Conversation{
-		ID:        uuid.New(),
-		Type:      "personal",
-		CreatedBy: user1ID,
-	}, nil
-}
-
-func (s *authHandlerChatServiceStub) BroadcastUserStatus(_ context.Context, _ int64, _ string) {}
 
 func newAuthHandlerLoginService(t *testing.T, hasRegisteredMobileAuth bool, opts ...auth.ServiceOption) (*auth.Service, *int32) {
 	t.Helper()
@@ -430,7 +414,6 @@ func newAuthHandlerLoginService(t *testing.T, hasRegisteredMobileAuth bool, opts
 		userRepo,
 		nil,
 		nil,
-		&authHandlerChatServiceStub{},
 		keycloak.New(kcServer.URL, "test-realm", "test-client", ""),
 		nil,
 		"test-realm",
@@ -517,7 +500,6 @@ func TestAuthHandlerCompleteKeycloakLoginRedirectsWithoutTokensInURL(t *testing.
 		userRepo,
 		nil,
 		nil,
-		&authHandlerChatServiceStub{},
 		keycloak.New(kcServer.URL, "test-realm", "test-client", ""),
 		nil,
 		"test-realm",
@@ -600,7 +582,6 @@ func TestAuthHandlerStartKeycloakLoginRedirectsToPublicKeycloakURL(t *testing.T)
 		&authHandlerUserRepoStub{},
 		nil,
 		nil,
-		&authHandlerChatServiceStub{},
 		keycloak.NewWithPublicURL(
 			"http://keycloak:8080/keycloak",
 			"https://alem-workspace.gov.kz/keycloak",
@@ -676,7 +657,6 @@ func TestAuthHandlerStartMobileKeycloakLoginReturnsPKCEAuthURL(t *testing.T) {
 		&authHandlerUserRepoStub{},
 		nil,
 		nil,
-		&authHandlerChatServiceStub{},
 		defaultClient,
 		nil,
 		"GovApps",
@@ -798,7 +778,8 @@ func TestSanitizeRedirectTargetNormalizesLegacyFrontendRoutes(t *testing.T) {
 		"/teamstore":                "/web/teamstore",
 		"/dashboard?tab=tasks":      "/web/dashboard?tab=tasks",
 		"/main/dashboard":           "/web/main/dashboard",
-		"/messenger/chat/42":        "/web/messenger/chat/42",
+		"/messenger/chat/42":        "/web/workspace",
+		"/web/messenger/chat/42":    "/web/workspace",
 		"/drive/files?folder=docs":  "/web/drive/files?folder=docs",
 		"https://evil.example":      "/web/",
 		"dashboard":                 "/web/",
@@ -1098,7 +1079,6 @@ func TestAuthHandlerGetAllUsersPaginated(t *testing.T) {
 		userRepo,
 		nil,
 		nil,
-		&authHandlerChatServiceStub{},
 		nil,
 		nil,
 		"test-realm",

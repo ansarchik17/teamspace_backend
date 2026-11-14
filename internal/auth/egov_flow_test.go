@@ -115,9 +115,6 @@ func (r *egovUserRepoStub) GetByKeycloakIDs(_ context.Context, _ []string) ([]*d
 func (r *egovUserRepoStub) GetNeverLoggedIn(_ context.Context) ([]*domain.User, error) {
 	return nil, nil
 }
-func (r *egovUserRepoStub) ShareConversation(_ context.Context, _, _ int64) (bool, error) {
-	return false, nil
-}
 func (r *egovUserRepoStub) ExportMinistryUsers(_ context.Context, _ int64, _ []int64, _ []int64, _ []int64) ([]domain.MinistryUserExportRow, error) {
 	return nil, nil
 }

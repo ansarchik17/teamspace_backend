@@ -78,7 +78,7 @@ type NotebookResearchJobError struct {
 	HTTPStatus int             `json:"http_status"`
 	Code       string          `json:"code"`
 	Message    string          `json:"message"`
-	Body       json.RawMessage `json:"body,omitempty"`
+	Body       json.RawMessage `json:"body,omitempty" swaggertype:"object"`
 }
 
 // NotebookResearchJob is the public view of an asynchronous research request.

@@ -71,7 +71,7 @@ func TestScopedUserCreateRequiresOrganizationTeam(t *testing.T) {
 				updateUserAdminRepoStub: &updateUserAdminRepoStub{user: actor},
 				teamError:               tc.teamError,
 			}
-			service := NewKeycloakService(repo, nil, nil, nil, nil, nil, "test")
+			service := NewKeycloakService(repo, nil, nil, nil, nil, "test")
 			request := &CreateUserRequest{OrganizationID: tc.company, TeamID: tc.team}
 			err := service.ValidateScopedUserCreate(context.Background(), actor.ID, request)
 			if tc.wantStatus != 0 {
@@ -117,7 +117,7 @@ func TestCreateUserRejectsMissingTeamBeforeKeycloak(t *testing.T) {
 func TestCreateUserRejectsUnavailableTeamBeforeKeycloak(t *testing.T) {
 	companyID, teamID := uuid.New(), uuid.New()
 	repo := &createUserTeamRepository{teamError: errors.New("team not found")}
-	service := NewKeycloakService(repo, nil, nil, nil, nil, nil, "test")
+	service := NewKeycloakService(repo, nil, nil, nil, nil, "test")
 	_, err := service.CreateUser(context.Background(), 1, &CreateUserRequest{OrganizationID: &companyID, TeamID: &teamID})
 	require.Error(t, err)
 	require.Equal(t, http.StatusBadRequest, apperrors.ToAppError(err).StatusCode)
@@ -147,7 +147,7 @@ func TestCreateUserPreservesSelectedTeam(t *testing.T) {
 	defer server.Close()
 	companyID, teamID := uuid.New(), uuid.New()
 	repo := &createUserTeamRepository{}
-	service := NewKeycloakService(repo, nil, nil, nil, nil, keycloak.NewAdmin(server.URL, "master", "test", "test"), "test")
+	service := NewKeycloakService(repo, nil, nil, nil, keycloak.NewAdmin(server.URL, "master", "test", "test"), "test")
 	result, err := service.CreateUser(context.Background(), 1, &CreateUserRequest{
 		Email: "employee@example.invalid", Username: "new.employee", Password: "synthetic-password", IIN: "123456789012",
 		FirstName: "New", LastName: "Employee", OrganizationID: &companyID, TeamID: &teamID,

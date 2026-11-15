@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"net/netip"
 	"os"
 	"strings"
@@ -71,6 +72,7 @@ func NewRouter(
 	pubHandler *handler.PublicationHandler,
 	organizationHandler *handler.OrganizationHandler,
 	tenantHostMiddleware *middleware.TenantHostMiddleware,
+	pingDatabase func(context.Context) error,
 	organizationIdentityProviderHandlers ...*handler.OrganizationIdentityProviderHandler,
 ) *gin.Engine {
 	// Set Gin mode
@@ -120,7 +122,7 @@ func NewRouter(
 
 	// Health check & Monitoring endpoints
 	router.Any("/health", healthCheck)
-	router.Any("/ready", readyCheck)
+	router.Any("/ready", readyCheck(pingDatabase))
 	monitoring := router.Group("/api/admin/monitoring")
 	if authMiddleware != nil {
 		monitoring.Use(authMiddleware.Authenticate())
@@ -1244,14 +1246,6 @@ func NewRouter(
 func healthCheck(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"status":  "ok",
-		"service": "messenger-api",
-	})
-}
-
-// readyCheck returns 200 if service is ready to accept requests
-func readyCheck(c *gin.Context) {
-	c.JSON(200, gin.H{
-		"status":  "ready",
 		"service": "messenger-api",
 	})
 }

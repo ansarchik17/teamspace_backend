@@ -789,6 +789,7 @@ func main() {
 		pubHandler,
 		organizationHandler,
 		tenantHostMiddleware,
+		db.Ping,
 		organizationIdentityProviderHandler,
 	)
 

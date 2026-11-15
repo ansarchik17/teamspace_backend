@@ -1,18 +1,21 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/gin-gonic/gin"
 	"github.com/west6ide/workspace-backend/internal/config"
 	"github.com/west6ide/workspace-backend/internal/handler"
 	"github.com/west6ide/workspace-backend/internal/middleware"
 	"go.uber.org/zap"
 )
 
-func TestNewRouterRegistersRoutesWithoutPanic(t *testing.T) {
+func newTestRouter(t *testing.T, pingDatabase func(context.Context) error) *gin.Engine {
+	t.Helper()
 	cfg := &config.Config{
 		App: config.AppConfig{
 			Env: "test",
@@ -79,7 +82,13 @@ func TestNewRouterRegistersRoutesWithoutPanic(t *testing.T) {
 		&handler.PublicationHandler{},
 		nil,
 		nil,
+		pingDatabase,
 	)
+	return router
+}
+
+func TestNewRouterRegistersRoutesWithoutPanic(t *testing.T) {
+	router := newTestRouter(t, nil)
 	if router == nil {
 		t.Fatal("NewRouter returned nil")
 	}

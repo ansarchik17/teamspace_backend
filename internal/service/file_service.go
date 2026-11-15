@@ -321,7 +321,8 @@ func (s *FileService) OpenObject(ctx context.Context, objectName string) (*minio
 	return obj, contentType, stat.Size, stat.LastModified, nil
 }
 
-// DeleteFile deletes a file from MinIO
+// DeleteFile is an internal storage primitive. HTTP callers must use
+// DeleteFileForUser; resource services perform their own authorization/cleanup.
 func (s *FileService) DeleteFile(ctx context.Context, objectName string) error {
 	err := s.minioClient.RemoveObject(ctx, s.bucket, objectName, minio.RemoveObjectOptions{})
 	if err != nil {

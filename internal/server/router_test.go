@@ -83,6 +83,19 @@ func TestNewRouterRegistersRoutesWithoutPanic(t *testing.T) {
 	if router == nil {
 		t.Fatal("NewRouter returned nil")
 	}
+	// Neither raw deletion route may reach storage without authentication,
+	// regardless of forged identity headers or a download signature.
+	for _, path := range []string{"/api/v1/files", "/api/v1/files/public"} {
+		for _, query := range []string{"", "?object_name=file%2F42%2Fprivate.txt&user_id=42&signature=download-only&expires=9999999999"} {
+			response := httptest.NewRecorder()
+			request := httptest.NewRequest(http.MethodDelete, path+query, nil)
+			request.Header.Set("X-User-ID", "42")
+			router.ServeHTTP(response, request)
+			if response.Code != http.StatusUnauthorized {
+				t.Fatalf("anonymous DELETE %s returned %d: %s", path, response.Code, response.Body.String())
+			}
+		}
+	}
 	for _, expected := range []struct{ method, path string }{
 		{"POST", "/api/v1/publications/:id/acknowledge"},
 		{"POST", "/api/v1/calls/start"},

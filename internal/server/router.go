@@ -229,9 +229,8 @@ func NewRouter(
 
 		// Public file downloads
 		v1.GET("/files/download", fileHandler.DownloadFile)
-		// Public file upload/delete (open/no-auth)
+		// Public upload does not grant permission to delete storage objects.
 		v1.POST("/files/public/upload", fileHandler.UploadPublicFile)
-		v1.DELETE("/files/public", fileHandler.DeletePublicFile)
 
 		// Tools routes
 		if contentExtractionHandler != nil {
@@ -710,6 +709,7 @@ func NewRouter(
 					files.POST("/upload", fileHandler.UploadFile)
 					files.GET("/url", fileHandler.GetFileURL)
 					files.DELETE("", fileHandler.DeleteFile)
+					files.DELETE("/public", fileHandler.DeletePublicFile)
 				}
 			}
 

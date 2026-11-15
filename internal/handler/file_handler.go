@@ -188,21 +188,30 @@ func (h *FileHandler) serveFileStream(c *gin.Context, objectName string) {
 
 // DeleteFile godoc
 // @Summary Delete file
-// @Description Delete a file from storage
+// @Description Delete an owned standalone upload. Managed files must be deleted through their resource API.
 // @Tags files
 // @Security BearerAuth
 // @Param object_name query string true "Object name in storage"
 // @Produce json
 // @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 403 {object} map[string]interface{}
 // @Router /files [delete]
 func (h *FileHandler) DeleteFile(c *gin.Context) {
+	userID, authenticated := middleware.GetUserID(c)
+	if !authenticated || userID <= 0 {
+		h.respondError(c, apperrors.Unauthorized("unauthorized file access"))
+		return
+	}
+
 	objectName := c.Query("object_name")
 	if objectName == "" {
 		h.respondError(c, apperrors.BadRequest("object_name is required"))
 		return
 	}
 
-	if err := h.fileService.DeleteFile(c.Request.Context(), objectName); err != nil {
+	if err := h.fileService.DeleteFileForUser(c.Request.Context(), userID, objectName); err != nil {
 		h.respondError(c, apperrors.ToAppError(err))
 		return
 	}
@@ -253,16 +262,7 @@ func (h *FileHandler) UploadPublicFile(c *gin.Context) {
 		return
 	}
 
-	// Generate download URL
-	// For public files, we might want a permanent URL or just use the same mechanism
-	// The existing GetFileURL generates a proxy URL.
-	// The user asked for "url photo", so the proxy URL is correct.
-	// We can use a long expiry or the download endpoint doesn't check expiry for public files?
-	// The current GetFileURL implementation generates a URL with `object_name` param.
-	// The DownloadFile endpoint relies on `object_name` and does NOT check auth or signatures currently
-	// (it just calls fileService.DownloadFile -> Minio).
-	// So it works for public access as long as the DownloadFile endpoint is public (it is).
-
+	// A signed download URL permits reading, never deletion of the object.
 	downloadURL, err := h.fileService.GetFileURL(c.Request.Context(), objectName, 24*time.Hour)
 	if err != nil {
 		h.respondError(c, apperrors.ToAppError(err))
@@ -284,29 +284,19 @@ func (h *FileHandler) UploadPublicFile(c *gin.Context) {
 }
 
 // DeletePublicFile godoc
-// @Summary Delete public file
-// @Description Delete a file from storage without authentication
+// @Summary Delete an owned standalone upload (compatibility alias)
+// @Description Requires authentication and the same ownership checks as DELETE /files. Public visibility does not grant deletion rights.
 // @Tags files
+// @Security BearerAuth
 // @Param object_name query string true "Object name in storage"
 // @Produce json
 // @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Failure 403 {object} map[string]interface{}
 // @Router /files/public [delete]
 func (h *FileHandler) DeletePublicFile(c *gin.Context) {
-	objectName := c.Query("object_name")
-	if objectName == "" {
-		h.respondError(c, apperrors.BadRequest("object_name is required"))
-		return
-	}
-
-	// Since this is public/unprotected, ANYONE can delete ANY file if they know the object name.
-	// This is dangerous but requested by the user.
-
-	if err := h.fileService.DeleteFile(c.Request.Context(), objectName); err != nil {
-		h.respondError(c, apperrors.ToAppError(err))
-		return
-	}
-
-	respondJSON(c, http.StatusOK, gin.H{"message": apiMessage(c, "file deleted successfully")})
+	h.DeleteFile(c)
 }
 
 func (h *FileHandler) respondError(c *gin.Context, err *apperrors.AppError) {

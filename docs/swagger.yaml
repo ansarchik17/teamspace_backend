@@ -15411,7 +15411,8 @@ paths:
       - external-admin
   /files:
     delete:
-      description: Delete a file from storage
+      description: Delete an owned standalone upload. Managed files must be deleted
+        through their resource API.
       parameters:
       - description: Object name in storage
         in: query
@@ -15423,6 +15424,21 @@ paths:
       responses:
         "200":
           description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
           schema:
             additionalProperties: true
             type: object
@@ -15452,7 +15468,8 @@ paths:
       - files
   /files/public:
     delete:
-      description: Delete a file from storage without authentication
+      description: Requires authentication and the same ownership checks as DELETE
+        /files. Public visibility does not grant deletion rights.
       parameters:
       - description: Object name in storage
         in: query
@@ -15467,7 +15484,24 @@ paths:
           schema:
             additionalProperties: true
             type: object
-      summary: Delete public file
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Forbidden
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete an owned standalone upload (compatibility alias)
       tags:
       - files
   /files/public/upload:

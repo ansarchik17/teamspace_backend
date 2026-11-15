@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url'
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const credentialsPath = resolve(root, '.cache/dev-admin.json')
 const email = 'admin@admin.com'
-// The older migration already reserves username "admin" for admin@admin.kz.
+// Keep the explicit development account independent from the retired bootstrap identity.
 const username = 'admin.platform'
 const compose = ['compose', '--project-name', 'teamspace-dev', '-f', resolve(root, 'compose.dev.yml')]
 let password = ''

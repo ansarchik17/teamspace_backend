@@ -1,26 +1,10 @@
 -- +goose Up
--- Seed admin user (compatible with current schema)
-INSERT INTO users (
-    email,
-    username,
-    password_hash,
-    first_name,
-    last_name,
-    is_active,
-    role,
-    created_at,
-    updated_at
-) VALUES (
-    'admin@admin.kz',
-    'admin',
-    crypt('Qwerty12!', gen_salt('bf')),
-    'Admin',
-    'User',
-    true,
-    'admin',
-    now(),
-    now()
-);
+-- Retired security-sensitive bootstrap. Schema migrations must not provision
+-- a privileged identity with a password shared by every installation.
+-- Keep the version so existing Goose ledgers remain compatible. The forward
+-- migration 20261115000100 retires unchanged accounts on existing databases.
+SELECT 1;
 
 -- +goose Down
-DELETE FROM users WHERE email = 'admin@admin.kz';
+-- Never delete a separately provisioned administrator or restore shared credentials.
+SELECT 1;

@@ -162,7 +162,10 @@ type ChecklistBlockItem struct {
 
 // TableCell is a single cell in a table block.
 type TableCell struct {
+	// Plain text for search and export; derived from HTML when provided.
 	Text string `json:"text"`
+	// Optional formatting HTML, sanitized to the notes editor's allowlist.
+	HTML string `json:"html,omitempty"`
 }
 
 // Validate returns an error if the ContentDoc violates MVP rules.
@@ -248,6 +251,11 @@ func (b *ContentBlock) validate(idx int) error {
 			}
 			if len(row) != expectedCols {
 				return fmt.Errorf("block[%d].rows[%d]: table must be rectangular", idx, r)
+			}
+			for col := range row {
+				if err := row[col].normalize(); err != nil {
+					return fmt.Errorf("block[%d].rows[%d][%d]: %w", idx, r, col, err)
+				}
 			}
 		}
 	case NoteBlockTypeImage:

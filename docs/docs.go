@@ -30475,7 +30475,12 @@ const docTemplate = `{
         "domain.TableCell": {
             "type": "object",
             "properties": {
+                "html": {
+                    "description": "Optional formatting HTML, sanitized to the notes editor's allowlist.",
+                    "type": "string"
+                },
                 "text": {
+                    "description": "Plain text for search and export; derived from HTML when provided.",
                     "type": "string"
                 }
             }

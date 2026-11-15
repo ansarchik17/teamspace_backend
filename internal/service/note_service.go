@@ -1704,7 +1704,7 @@ func (s *NoteService) ClearTableCell(ctx context.Context, userID int64, noteID u
 		return nil, apperrors.TableColumnOutOfRange()
 	}
 
-	tableBlock.Rows[rowIndex][colIndex].Text = ""
+	tableBlock.Rows[rowIndex][colIndex] = domain.TableCell{}
 	note.ContentText = note.ContentDoc.ExtractPlainText()
 	if err := s.saveNoteWithVersionCheck(ctx, note, version); err != nil {
 		return nil, err

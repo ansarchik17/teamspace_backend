@@ -45,8 +45,6 @@ type calendarHandlerService interface {
 	DeleteReminder(ctx context.Context, userID int64, eventID uuid.UUID) error
 	SearchUsers(ctx context.Context, requesterID int64, query string, limit, offset int) ([]*domain.UserResponse, error)
 	SearchEvents(ctx context.Context, userID int64, title string, from, to time.Time, limit int) ([]domain.Event, error)
-	CreatePublicEvent(ctx context.Context, targetUserID int64, req *domain.CreateEventRequest) (*domain.Event, error)
-	GetUserByEmail(ctx context.Context, email string) (*domain.User, error)
 	GetCalendarGrid(ctx context.Context, userID int64, req domain.CalendarGridRequest) (*domain.CalendarGridResponse, error)
 	GetCalendarsWithSettings(ctx context.Context, userID int64) ([]domain.UserCalendarWithSettings, error)
 	UpdateCalendarVisibility(ctx context.Context, userID int64, calendarID uuid.UUID, req domain.UpdateCalendarVisibilityRequest) error
@@ -265,7 +263,11 @@ func (h *CalendarHandler) joinCalendarMeeting(c *gin.Context, endpoint string) {
 // @Failure 500 {object} apperrors.AppError
 // @Router /calendar/events [post]
 func (h *CalendarHandler) CreateEvent(c *gin.Context) {
-	userID := middleware.MustGetUserID(c)
+	userID, authenticated := middleware.GetUserID(c)
+	if !authenticated || userID <= 0 {
+		h.respondError(c, apperrors.Unauthorized("authentication required to create calendar events"))
+		return
+	}
 
 	var req domain.CreateEventRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -767,7 +769,8 @@ func (h *CalendarHandler) HandleCalendarInviteAction(c *gin.Context) {
 }
 
 // BatchCreateEvents godoc
-// @Summary Batch create calendar events with individual details per user
+// @Summary Batch create events in the authenticated user's own calendar
+// @Description Every item must identify the authenticated user's email. Invite colleagues through POST /calendar/events with attendee_ids.
 // @Tags calendar
 // @Security BearerAuth
 // @Accept json
@@ -781,13 +784,17 @@ func (h *CalendarHandler) HandleCalendarInviteAction(c *gin.Context) {
 // @Failure 500 {object} map[string]any
 // @Router /calendar/events/batch [post]
 func (h *CalendarHandler) BatchCreateEvents(c *gin.Context) {
+	userID, authenticated := middleware.GetUserID(c)
+	if !authenticated || userID <= 0 {
+		h.respondError(c, apperrors.Unauthorized("authentication required to create calendar events"))
+		return
+	}
+
 	var req domain.BatchCreateEventRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.respondError(c, apperrors.Validation("invalid request body"))
 		return
 	}
-
-	userID, _ := middleware.GetUserID(c)
 
 	for i := range req.Items {
 		req.Items[i].Mail = strings.ToLower(strings.TrimSpace(req.Items[i].Mail))
@@ -1142,87 +1149,23 @@ func (h *CalendarHandler) SearchEvents(c *gin.Context) {
 }
 
 // CreatePublicEvent godoc
-// @Summary Create a new calendar event via public API (no auth required)
+// @Summary Create an authenticated calendar event (compatibility alias)
+// @Description Uses the same authorization and event creation as POST /calendar/events. The organizer is the authenticated user; user_id and email in the body, URL or headers do not select an organizer.
 // @Tags calendar
+// @Security BearerAuth
 // @Accept json
 // @Produce json
-// @Param request body domain.CreatePublicEventRequest true "Public Event creation request"
+// @Param request body domain.CreateEventRequest true "Event creation request"
 // @Success 201 {object} domain.Event
 // @Failure 400 {object} map[string]any
-// @Failure 404 {object} map[string]any
+// @Failure 401 {object} map[string]any
+// @Failure 403 {object} map[string]any
+// @Failure 409 {object} map[string]any
 // @Failure 500 {object} map[string]any
 // @Router /calendar/public/events [post]
+// @Router /calendar/events/public [post]
 func (h *CalendarHandler) CreatePublicEvent(c *gin.Context) {
-	var req domain.CreatePublicEventRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		h.respondError(c, apperrors.Validation("invalid request body"))
-		return
-	}
-
-	userID, err := h.resolvePublicEventUserID(c, req)
-	if err != nil {
-		h.respondError(c, err)
-		return
-	}
-
-	if userID == 0 {
-		h.respondError(c, apperrors.Validation("user identity (user_id or email) is required for public event creation"))
-		return
-	}
-
-	event, serviceErr := h.service.CreatePublicEvent(c.Request.Context(), userID, &req.CreateEventRequest)
-	if serviceErr != nil {
-		h.respondError(c, apperrors.ToAppError(serviceErr))
-		return
-	}
-
-	respondJSON(c, http.StatusCreated, event)
-}
-
-func (h *CalendarHandler) resolvePublicEventUserID(c *gin.Context, req domain.CreatePublicEventRequest) (int64, *apperrors.AppError) {
-	if req.UserID != 0 {
-		return req.UserID, nil
-	}
-
-	if email := normalizeCalendarEmail(req.Email); email != "" {
-		u, err := h.service.GetUserByEmail(c.Request.Context(), email)
-		if err != nil || u == nil {
-			return 0, apperrors.Validation("user not found by email: " + email)
-		}
-		return u.ID, nil
-	}
-
-	if uIDStr := strings.TrimSpace(c.Query("user_id")); uIDStr != "" {
-		if parsed, err := strconv.ParseInt(uIDStr, 10, 64); err == nil {
-			return parsed, nil
-		}
-	}
-
-	if email := normalizeCalendarEmail(c.Query("email")); email != "" {
-		u, err := h.service.GetUserByEmail(c.Request.Context(), email)
-		if err == nil && u != nil {
-			return u.ID, nil
-		}
-	}
-
-	if uIDStr := strings.TrimSpace(c.GetHeader("X-User-Id")); uIDStr != "" {
-		if parsed, err := strconv.ParseInt(uIDStr, 10, 64); err == nil {
-			return parsed, nil
-		}
-	}
-
-	if email := normalizeCalendarEmail(c.GetHeader("X-User-Email")); email != "" {
-		u, err := h.service.GetUserByEmail(c.Request.Context(), email)
-		if err == nil && u != nil {
-			return u.ID, nil
-		}
-	}
-
-	return 0, nil
-}
-
-func normalizeCalendarEmail(email string) string {
-	return strings.ToLower(strings.TrimSpace(email))
+	h.CreateEvent(c)
 }
 
 // GetCalendarGrid godoc

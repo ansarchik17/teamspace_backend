@@ -265,11 +265,8 @@ func NewRouter(
 			}
 		}
 
-		// Public Calendar routes
+		// Signed invitation actions and timezone metadata do not create events.
 		if calendarHandler != nil {
-			v1.POST("/calendar/events/batch", calendarHandler.BatchCreateEvents)
-			v1.POST("/calendar/public/events", calendarHandler.CreatePublicEvent)
-			v1.POST("/calendar/events/public", calendarHandler.CreatePublicEvent) // Alias route to prevent typos
 			v1.GET("/calendar/invitations/action", calendarHandler.HandleCalendarInviteAction)
 			v1.GET("/calendar/timezones", calendarHandler.GetTimezones)
 		}
@@ -897,6 +894,10 @@ func NewRouter(
 				cal := protected.Group("/calendar")
 				{
 					cal.POST("/events", calendarHandler.CreateEvent)
+					cal.POST("/events/batch", calendarHandler.BatchCreateEvents)
+					// Compatibility URLs share authenticated event creation.
+					cal.POST("/public/events", calendarHandler.CreatePublicEvent)
+					cal.POST("/events/public", calendarHandler.CreatePublicEvent)
 					cal.GET("/calendars", calendarHandler.ListCalendars)
 					cal.POST("/calendars", calendarHandler.CreateCalendar)
 

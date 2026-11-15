@@ -29,6 +29,7 @@ func TestCalendarHandler_CreatePublicEvent_InvalidJSON(t *testing.T) {
 
 	recorder := httptest.NewRecorder()
 	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Set("user_id", int64(42))
 	ctx.Request = httptest.NewRequest(http.MethodPost, "/api/v1/calendar/public/events", bytes.NewBufferString("{invalid-json}"))
 	ctx.Request.Header.Set("Content-Type", "application/json")
 
@@ -49,18 +50,16 @@ func TestSummarizeCalendarRSVP(t *testing.T) {
 	require.Equal(t, 1, got["declined"])
 }
 
-func TestCalendarHandler_CreatePublicEvent_MissingUserIdentity(t *testing.T) {
+func TestCalendarHandler_CreatePublicEvent_RequiresAuthentication(t *testing.T) {
 	t.Parallel()
 	gin.SetMode(gin.TestMode)
 
 	h := NewCalendarHandler(nil, "test_secret", zap.NewNop())
 
-	reqBody := domain.CreatePublicEventRequest{
-		CreateEventRequest: domain.CreateEventRequest{
-			Title:     "Test public event",
-			StartTime: time.Now(),
-			EndTime:   time.Now().Add(time.Hour),
-		},
+	reqBody := domain.CreateEventRequest{
+		Title:     "Test public event",
+		StartTime: time.Now(),
+		EndTime:   time.Now().Add(time.Hour),
 	}
 	jsonBytes, _ := json.Marshal(reqBody)
 
@@ -71,8 +70,7 @@ func TestCalendarHandler_CreatePublicEvent_MissingUserIdentity(t *testing.T) {
 
 	h.CreatePublicEvent(ctx)
 
-	assert.Equal(t, http.StatusBadRequest, recorder.Code)
-	assert.Contains(t, recorder.Body.String(), `"code":"VALIDATION_ERROR"`)
+	assert.Equal(t, http.StatusUnauthorized, recorder.Code)
 }
 
 // ---------------------------------------------------------------------------
@@ -224,12 +222,6 @@ func (s *stubCalendarHandlerService) SearchUsers(_ context.Context, _ int64, _ s
 	panic("not implemented")
 }
 func (s *stubCalendarHandlerService) SearchEvents(_ context.Context, _ int64, _ string, _, _ time.Time, _ int) ([]domain.Event, error) {
-	panic("not implemented")
-}
-func (s *stubCalendarHandlerService) CreatePublicEvent(_ context.Context, _ int64, _ *domain.CreateEventRequest) (*domain.Event, error) {
-	panic("not implemented")
-}
-func (s *stubCalendarHandlerService) GetUserByEmail(_ context.Context, _ string) (*domain.User, error) {
 	panic("not implemented")
 }
 func (s *stubCalendarHandlerService) GetCalendarGrid(_ context.Context, _ int64, _ domain.CalendarGridRequest) (*domain.CalendarGridResponse, error) {

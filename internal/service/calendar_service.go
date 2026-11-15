@@ -503,29 +503,6 @@ func (s *CalendarService) CreateEventWithOptions(ctx context.Context, userID int
 	return event, nil
 }
 
-func (s *CalendarService) CreatePublicEvent(ctx context.Context, targetUserID int64, req *domain.CreateEventRequest) (*domain.Event, error) {
-	event, err := s.CreateEvent(ctx, targetUserID, req)
-	if err != nil {
-		return nil, err
-	}
-
-	targetUser, lookupErr := s.userRepo.GetByID(ctx, targetUserID)
-	if lookupErr != nil {
-		s.logger.Error("failed to load public event recipient",
-			zap.Int64("user_id", targetUserID),
-			zap.String("event_id", event.ID.String()),
-			zap.Error(lookupErr),
-		)
-		return event, nil
-	}
-	if targetUser == nil {
-		return event, nil
-	}
-
-	go s.sendBatchNotification(targetUser, event, 0)
-	return event, nil
-}
-
 func getSafeLocation(loc *string) string {
 	if loc == nil {
 		return ""
@@ -1614,6 +1591,29 @@ type BatchConflict struct {
 }
 
 func (s *CalendarService) BatchCreateEvents(ctx context.Context, organizerID int64, req *domain.BatchCreateEventRequest) ([]*domain.Event, error) {
+	if organizerID <= 0 {
+		return nil, apperrors.Unauthorized("authentication required to create calendar events")
+	}
+	if req == nil {
+		return nil, apperrors.Validation("invalid request body")
+	}
+	organizer, err := s.userRepo.GetByID(ctx, organizerID)
+	if err != nil {
+		return nil, apperrors.InternalWithErr("failed to check calendar owner", err)
+	}
+	if organizer == nil || !organizer.IsActive {
+		return nil, apperrors.Forbidden("calendar owner is unavailable")
+	}
+	// Check the entire batch before writing anything. There is no delegated
+	// calendar-write permission in this API; colleagues are invited through
+	// CreateEvent with attendee_ids, never impersonated as event organizers.
+	ownerEmail := strings.ToLower(strings.TrimSpace(organizer.Email))
+	for _, item := range req.Items {
+		if ownerEmail == "" || strings.ToLower(strings.TrimSpace(item.Mail)) != ownerEmail {
+			return nil, apperrors.Forbidden("cannot create events in another user's calendar")
+		}
+	}
+
 	start, end, err := s.parseBatchDates(req.DateFrom, req.DateTo)
 	if err != nil {
 		return nil, err
@@ -1655,43 +1655,29 @@ func (s *CalendarService) processBatchItemWithConflict(
 	start, end time.Time,
 ) (*domain.Event, *BatchConflict, error) {
 
-	user, err := s.userRepo.GetByEmail(ctx, item.Mail)
-	if err != nil || user == nil {
-		return nil, nil, fmt.Errorf("user not found: %v", err)
-	}
-
-	hasOverlap, err := s.repo.HasOverlap(ctx, user.ID, start, end, nil)
+	hasOverlap, err := s.repo.HasOverlap(ctx, organizerID, start, end, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("check overlap failed: %w", err)
 	}
 	if hasOverlap {
 		return nil, &BatchConflict{
-			Email:  user.Email,
-			UserID: user.ID,
+			Email:  item.Mail,
+			UserID: organizerID,
 			Start:  start,
 			End:    end,
 			Reason: "overlap",
 		}, nil
 	}
 
-	event := &domain.Event{
-		UserID:             user.ID,
-		Title:              item.MeetingName,
-		Description:        &item.MeetingDescription,
-		StartTime:          start,
-		EndTime:            end,
-		CreatedAt:          time.Now(),
-		UpdatedAt:          time.Now(),
-		RecurrenceInterval: 1,
+	// Reuse normal creation so the owner, default calendar, invitations and
+	// other event permissions cannot diverge from the authenticated endpoint.
+	event, err := s.CreateEvent(ctx, organizerID, &domain.CreateEventRequest{
+		Title: item.MeetingName, Description: &item.MeetingDescription,
+		StartTime: start, EndTime: end,
+	})
+	if err != nil {
+		return nil, nil, err
 	}
-
-	var attendees []int64 = nil
-
-	if err := s.repo.Create(ctx, event, attendees); err != nil {
-		return nil, nil, fmt.Errorf("db create failed: %w", err)
-	}
-
-	go s.sendBatchNotification(user, event, organizerID)
 	return event, nil, nil
 }
 
@@ -1719,72 +1705,6 @@ func (s *CalendarService) parseBatchDates(from, to string) (time.Time, time.Time
 		return time.Time{}, time.Time{}, fmt.Errorf("date_to must be after date_from")
 	}
 	return dateFrom, dateTo, nil
-}
-
-func (s *CalendarService) sendBatchNotification(targetUser *domain.User, evt *domain.Event, organizerID int64) {
-	asyncCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-	defer cancel()
-
-	var orgID *int64
-	if organizerID != 0 {
-		orgID = &organizerID
-	}
-
-	notifReq := domain.CreateNotificationRequest{
-		UserID:          targetUser.ID,
-		OrganizerID:     orgID,
-		Type:            "calendar_event_created",
-		TitleTemplate:   &domain.NotificationTemplate{Source: "Вам назначена встреча", Args: []any{}},
-		Title:           "Вам назначена встреча",
-		ContentTemplate: &domain.NotificationTemplate{Source: "Встреча '%s' была добавлена в ваш календарь.", Args: []any{evt.Title}},
-		Content:         fmt.Sprintf("Встреча '%s' была добавлена в ваш календарь.", evt.Title),
-		Metadata: map[string]string{
-			"event_id":   evt.ID.String(),
-			"start_time": evt.StartTime.Format(time.RFC3339),
-		},
-	}
-
-	if err := s.notifService.CreateAndSendNotification(asyncCtx, notifReq); err != nil {
-		s.logger.Error("failed to send batch push",
-			zap.Int64("uid", targetUser.ID),
-			zap.Error(err),
-		)
-	}
-
-	description := ""
-	if evt.Description != nil {
-		description = *evt.Description
-	}
-
-	s.notifService.SendCalendarInviteEmail(
-		asyncCtx,
-		evt.ID,
-		targetUser.ID,
-		orgID,
-		evt.Title,
-		description,
-		"", // Location not strictly passed in batch
-		evt.StartTime,
-		evt.EndTime,
-		false,
-		false,
-		0,
-	)
-
-	s.notifService.SendCalendarInviteEmail(
-		asyncCtx,
-		evt.ID,
-		targetUser.ID,
-		&evt.UserID,
-		evt.Title,
-		description,
-		"", // location
-		evt.StartTime,
-		evt.EndTime,
-		false,
-		false,
-		0,
-	)
 }
 
 func (s *CalendarService) RespondToInvite(ctx context.Context, userID int64, eventID uuid.UUID, req *domain.RespondToInviteRequest) error {
@@ -2422,10 +2342,6 @@ func validateRecurrence(rule *string) error {
 	default:
 		return fmt.Errorf("invalid recurrence_rule: %s (allowed: DAILY, WEEKLY, MONTHLY)", *rule)
 	}
-}
-
-func (s *CalendarService) GetUserByEmail(ctx context.Context, email string) (*domain.User, error) {
-	return s.userRepo.GetByEmail(ctx, email)
 }
 
 // GetCalendarGrid retrieves events in calendar grid format (day/week/month view)

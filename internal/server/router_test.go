@@ -96,6 +96,17 @@ func TestNewRouterRegistersRoutesWithoutPanic(t *testing.T) {
 			}
 		}
 	}
+	for _, path := range []string{"/api/v1/calendar/events", "/api/v1/calendar/public/events", "/api/v1/calendar/events/public", "/api/v1/calendar/events/batch"} {
+		response := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodPost, path+"?user_id=42&email=other@example.invalid", strings.NewReader(`{"user_id":42,"email":"other@example.invalid","title":"Spoofed event","start_time":"2027-01-01T10:00:00Z","end_time":"2027-01-01T11:00:00Z"}`))
+		request.Header.Set("Content-Type", "application/json")
+		request.Header.Set("X-User-Id", "42")
+		request.Header.Set("X-User-Email", "other@example.invalid")
+		router.ServeHTTP(response, request)
+		if response.Code != http.StatusUnauthorized {
+			t.Fatalf("anonymous POST %s returned %d: %s", path, response.Code, response.Body.String())
+		}
+	}
 	for _, expected := range []struct{ method, path string }{
 		{"POST", "/api/v1/publications/:id/acknowledge"},
 		{"POST", "/api/v1/calls/start"},

@@ -291,12 +291,6 @@ type CalendarMeetingInfo struct {
 	Status          string  `json:"status"`
 }
 
-type CreatePublicEventRequest struct {
-	CreateEventRequest
-	UserID int64  `json:"user_id"`
-	Email  string `json:"email"`
-}
-
 type UpdateEventRequest struct {
 	ReminderMinutesSet bool `json:"-"`
 

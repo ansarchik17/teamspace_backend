@@ -2527,6 +2527,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "description": "Every item must identify the authenticated user's email. Invite colleagues through POST /calendar/events with attendee_ids.",
                 "consumes": [
                     "application/json"
                 ],
@@ -2536,7 +2537,7 @@ const docTemplate = `{
                 "tags": [
                     "calendar"
                 ],
-                "summary": "Batch create calendar events with individual details per user",
+                "summary": "Batch create events in the authenticated user's own calendar",
                 "parameters": [
                     {
                         "description": "Batch event creation request",
@@ -2715,6 +2716,80 @@ const docTemplate = `{
                         "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/apperrors.AppError"
+                        }
+                    }
+                }
+            }
+        },
+        "/calendar/events/public": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Uses the same authorization and event creation as POST /calendar/events. The organizer is the authenticated user; user_id and email in the body, URL or headers do not select an organizer.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "calendar"
+                ],
+                "summary": "Create an authenticated calendar event (compatibility alias)",
+                "parameters": [
+                    {
+                        "description": "Event creation request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/domain.CreateEventRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/domain.Event"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
                         }
                     }
                 }
@@ -3466,6 +3541,12 @@ const docTemplate = `{
         },
         "/calendar/public/events": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Uses the same authorization and event creation as POST /calendar/events. The organizer is the authenticated user; user_id and email in the body, URL or headers do not select an organizer.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3475,15 +3556,15 @@ const docTemplate = `{
                 "tags": [
                     "calendar"
                 ],
-                "summary": "Create a new calendar event via public API (no auth required)",
+                "summary": "Create an authenticated calendar event (compatibility alias)",
                 "parameters": [
                     {
-                        "description": "Public Event creation request",
+                        "description": "Event creation request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/domain.CreatePublicEventRequest"
+                            "$ref": "#/definitions/domain.CreateEventRequest"
                         }
                     }
                 ],
@@ -3501,8 +3582,22 @@ const docTemplate = `{
                             "additionalProperties": true
                         }
                     },
-                    "404": {
-                        "description": "Not Found",
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -25970,82 +26065,6 @@ const docTemplate = `{
                 },
                 "unit_type": {
                     "type": "string"
-                }
-            }
-        },
-        "domain.CreatePublicEventRequest": {
-            "type": "object",
-            "required": [
-                "end_time",
-                "start_time",
-                "title"
-            ],
-            "properties": {
-                "attendee_ids": {
-                    "type": "array",
-                    "items": {
-                        "type": "integer"
-                    }
-                },
-                "calendar_id": {
-                    "type": "string"
-                },
-                "color": {
-                    "type": "string"
-                },
-                "default_attendance": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "email": {
-                    "type": "string"
-                },
-                "end_time": {
-                    "type": "string"
-                },
-                "is_all_day": {
-                    "type": "boolean"
-                },
-                "is_online": {
-                    "type": "boolean"
-                },
-                "location": {
-                    "type": "string"
-                },
-                "meeting_provider": {
-                    "type": "string"
-                },
-                "recurrence_interval": {
-                    "type": "integer"
-                },
-                "recurrence_rule": {
-                    "type": "string"
-                },
-                "recurrence_until": {
-                    "type": "string"
-                },
-                "reminder_minutes": {
-                    "type": "integer"
-                },
-                "room_id": {
-                    "type": "string"
-                },
-                "start_time": {
-                    "type": "string"
-                },
-                "timezone": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "url": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "integer"
                 }
             }
         },

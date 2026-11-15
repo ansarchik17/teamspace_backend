@@ -63,7 +63,9 @@ services:
     # The upstream image can reject anonymous pulls. Build the same official
     # source commit already pinned by deploy/production/ci/minio-test-binary.py.
     image: teamspace-dev-minio:0d7408fc9969
-    pull_policy: build
+    # Reuse the local image. Compose builds it if missing, but must not pull
+    # this local-only tag or rebuild it on every development startup.
+    pull_policy: never
     build:
       context: ./docker/minio-dev
       dockerfile: Dockerfile

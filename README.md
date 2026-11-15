@@ -23,8 +23,14 @@ npm run dev
 MinIO собирается локально из официальных исходников с закреплённым commit
 `0d7408fc9969caf07de6a8c3a84f9fbb10a6739e`, тем же, что используется в CI.
 Готовый образ `quay.io/minio/minio` не скачивается: registry может отвечать
-`unauthorized`. Первая сборка MinIO может занять несколько минут; последующие
-запуски используют Docker build cache. Каталог сборки — `docker/minio-dev`.
+`unauthorized`. Первая сборка MinIO может занять несколько минут и требует
+доступа к Docker Hub, GitHub и Go-модулям. Последующие запуски используют готовый
+локальный образ без пересборки и обращения к registry. Каталог сборки —
+`docker/minio-dev`. При необходимости пересобрать образ вручную:
+
+```bash
+docker compose -p teamspace-dev -f compose.dev.yml build minio
+```
 
 В другом терминале:
 

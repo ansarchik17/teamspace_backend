@@ -19,7 +19,6 @@ import (
 	"github.com/west6ide/workspace-backend/internal/keycloak"
 	"github.com/west6ide/workspace-backend/internal/repository"
 	appservice "github.com/west6ide/workspace-backend/internal/service"
-	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -622,18 +621,16 @@ func (s *Service) Login(ctx context.Context, req *LoginRequest) (*TokenPair, err
 	tok, err := s.kc.Password(ctx, keycloakLogin, req.Password)
 	if err != nil {
 		if u != nil && (u.KeycloakID == nil || *u.KeycloakID == "") && u.PasswordHash != "" && s.tokenManager != nil {
-			if bcryptErr := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(req.Password)); bcryptErr == nil {
-				localTokens, genErr := s.tokenManager.GenerateTokenPair(ctx, u.ID, derefStringValue(u.IIN), u.Email, u.Username, u.FirstName, u.LastName, false, nil)
-				if genErr == nil {
-					tok = &keycloak.TokenResponse{
-						AccessToken:  localTokens.AccessToken,
-						RefreshToken: localTokens.RefreshToken,
-						IDToken:      localTokens.IDToken,
-						TokenType:    localTokens.TokenType,
-						ExpiresIn:    localTokens.ExpiresIn,
-					}
-					err = nil
+			localTokens, genErr := s.localPasswordTokens(ctx, u, req.Password)
+			if genErr == nil {
+				tok = &keycloak.TokenResponse{
+					AccessToken:  localTokens.AccessToken,
+					RefreshToken: localTokens.RefreshToken,
+					IDToken:      localTokens.IDToken,
+					TokenType:    localTokens.TokenType,
+					ExpiresIn:    localTokens.ExpiresIn,
 				}
+				err = nil
 			}
 		}
 	}
@@ -2542,10 +2539,30 @@ func (s *Service) ResetUserPasswordAdmin(ctx context.Context, requesterID, targe
 }
 
 func (s *Service) ChangePassword(ctx context.Context, userID int64, oldPassword, newPassword string, keyBackup *appservice.SaveKeyBackupRequest) error {
+	_, err := s.ChangePasswordWithResult(ctx, userID, oldPassword, newPassword, keyBackup)
+	return err
+}
+
+type PasswordChangeResult struct {
+	ReauthenticationRequired bool
+}
+
+func (s *Service) ChangePasswordWithResult(ctx context.Context, userID int64, oldPassword, newPassword string, keyBackup *appservice.SaveKeyBackupRequest) (PasswordChangeResult, error) {
+	var result PasswordChangeResult
 	if s.recovery != nil {
-		return s.recovery.repo.WithUser(ctx, userID, func(c *pgxpool.Conn, u *domain.User) error {
+		if s.recovery.repo == nil {
+			return result, apperrors.RecoveryUnavailable()
+		}
+		err := s.recovery.repo.WithPasswordUser(ctx, userID, func(c *pgxpool.Conn, u *domain.User) error {
 			if err := s.recovery.repo.CheckPending(ctx, c, userID); err != nil {
 				return err
+			}
+			if u.KeycloakID == nil || *u.KeycloakID == "" {
+				if err := s.changeLocalPassword(ctx, c, u, oldPassword, newPassword, keyBackup); err != nil {
+					return err
+				}
+				result.ReauthenticationRequired = true
+				return nil
 			}
 			if err := s.recovery.verify(ctx, u, oldPassword); err != nil {
 				return err
@@ -2555,8 +2572,9 @@ func (s *Service) ChangePassword(ctx context.Context, userID int64, oldPassword,
 			}
 			return s.changePassword(ctx, userID, oldPassword, newPassword, keyBackup, u)
 		})
+		return result, err
 	}
-	return s.changePassword(ctx, userID, oldPassword, newPassword, keyBackup, nil)
+	return result, s.changePassword(ctx, userID, oldPassword, newPassword, keyBackup, nil)
 }
 func (s *Service) changePassword(ctx context.Context, userID int64, oldPassword, newPassword string, keyBackup *appservice.SaveKeyBackupRequest, verified *domain.User) error {
 	u, err := s.userRepo.GetByID(ctx, userID)

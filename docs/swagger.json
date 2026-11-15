@@ -1642,7 +1642,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Change user password. No chat encryption backup is required; optional legacy backups retain compensation support.",
+                "description": "Change local or Keycloak password. Local changes revoke existing sessions and return reauthentication_required=true. No chat encryption backup is required.",
                 "consumes": [
                     "application/json"
                 ],

@@ -1696,7 +1696,7 @@ type UpdateUserAvatarRequest struct {
 
 // ChangePassword godoc
 // @Summary Change password
-// @Description Change user password. No chat encryption backup is required; optional legacy backups retain compensation support.
+// @Description Change local or Keycloak password. Local changes revoke existing sessions and return reauthentication_required=true. No chat encryption backup is required.
 // @Tags auth
 // @Security BearerAuth
 // @Accept json
@@ -1735,13 +1735,17 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 		}
 	}
 
-	if err := h.authService.ChangePassword(c.Request.Context(), userID, req.OldPassword, req.NewPassword, backupReq); err != nil {
+	result, err := h.authService.ChangePasswordWithResult(c.Request.Context(), userID, req.OldPassword, req.NewPassword, backupReq)
+	if err != nil {
 		h.respondError(c, apperrors.ToAppError(err))
 		return
 	}
 
 	h.logger.Info("Password changed", zap.Int64("user_id", userID))
-	respondJSON(c, http.StatusOK, gin.H{"message": apiMessage(c, "password changed successfully")})
+	if result.ReauthenticationRequired {
+		clearAuthCookies(c)
+	}
+	respondJSON(c, http.StatusOK, gin.H{"message": apiMessage(c, "password changed successfully"), "reauthentication_required": result.ReauthenticationRequired})
 }
 
 // UpdateAvatar godoc

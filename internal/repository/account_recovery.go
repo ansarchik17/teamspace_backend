@@ -24,6 +24,16 @@ const recoveryAccountActive = `u.is_active AND u.deleted_at IS NULL AND NOT EXIS
 // One session lock spans the durable claim, the remote identity mutation, and
 // completion. A failed unlock discards the connection instead of leaking a lock.
 func (r *RecoveryRepository) WithUser(ctx context.Context, id int64, fn func(*pgxpool.Conn, *domain.User) error) error {
+	return r.withUser(ctx, id, true, fn)
+}
+
+// Password changes share the credential lock with recovery, while allowing a
+// local bcrypt identity. Email recovery still requires a Keycloak identity.
+func (r *RecoveryRepository) WithPasswordUser(ctx context.Context, id int64, fn func(*pgxpool.Conn, *domain.User) error) error {
+	return r.withUser(ctx, id, false, fn)
+}
+
+func (r *RecoveryRepository) withUser(ctx context.Context, id int64, requireKeycloak bool, fn func(*pgxpool.Conn, *domain.User) error) error {
 	c, err := r.db.Acquire(ctx)
 	if err != nil {
 		return err
@@ -49,14 +59,14 @@ func (r *RecoveryRepository) WithUser(ctx context.Context, id int64, fn func(*pg
 	}
 	var u domain.User
 	var kc *string
-	err = c.QueryRow(ctx, `SELECT u.id,u.username,u.email,u.keycloak_id FROM users u WHERE u.id=$1 AND `+recoveryAccountActive, id).Scan(&u.ID, &u.Username, &u.Email, &kc)
+	err = c.QueryRow(ctx, `SELECT u.id,u.username,u.email,u.keycloak_id,COALESCE(u.password_hash,'') FROM users u WHERE u.id=$1 AND `+recoveryAccountActive, id).Scan(&u.ID, &u.Username, &u.Email, &kc, &u.PasswordHash)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return apperrors.RecoveryInvalid()
 	}
 	if err != nil {
 		return err
 	}
-	if kc == nil || *kc == "" {
+	if requireKeycloak && (kc == nil || *kc == "") {
 		return apperrors.RecoveryInvalid()
 	}
 	u.KeycloakID = kc

@@ -107,12 +107,12 @@ func TestGrowyLMSBaseDefaultsToWorkspaceRatherThanCRM(t *testing.T) {
 }
 
 func TestGrowyAPIPathRejectsPrivilegedAndTraversalRoutes(t *testing.T) {
-	for _, path := range []string{"admin/tenants/provision/", "../token/", "crm/leads/../../admin/", "https://evil.test/crm/", "crm/%2e%2e/", "token/workspace/", "telegram/inbox/", "telegram/accounts/1/../../admin/", "telegram/accounts/%2e%2e/", "telegram/accounts/1/messages.html", "telegram/accounts/1//auth/qr/"} {
+	for _, path := range []string{"admin/tenants/provision/", "../token/", "crm/leads/../../admin/", "https://evil.test/crm/", "crm/%2e%2e/", "token/workspace/", "telegram/accounts/", "telegram/accounts/12/status/", "telegram/accounts/12/auth/qr/", "telegram/accounts/12/dialogs/45/messages/", "telegram/inbox/", "telegram/accounts/1/../../admin/", "telegram/accounts/%2e%2e/", "telegram/accounts/1/messages.html", "telegram/accounts/1//auth/qr/"} {
 		if growyAPIPath.MatchString(path) && !strings.Contains(path, "//") {
 			t.Errorf("accepted unsafe route %q", path)
 		}
 	}
-	for _, path := range []string{"crm/leads/", "crm/deals/123/", "whatsapp/conversations/1/messages/", "context/", "telegram/accounts/", "telegram/accounts/12/", "telegram/accounts/12/status/", "telegram/accounts/12/auth/qr/", "telegram/accounts/12/auth/qr/poll/", "telegram/accounts/12/auth/code/", "telegram/accounts/12/dialogs/", "telegram/accounts/12/dialogs/45/messages/", "telegram/accounts/12/dialogs/45/messages/67/attachment/", "telegram/accounts/12/dialogs/45/attachments/"} {
+	for _, path := range []string{"crm/leads/", "crm/deals/123/", "whatsapp/conversations/1/messages/", "context/"} {
 		if !growyAPIPath.MatchString(path) {
 			t.Errorf("rejected allowed route %q", path)
 		}

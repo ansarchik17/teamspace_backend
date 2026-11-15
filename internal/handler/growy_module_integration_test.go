@@ -118,6 +118,17 @@ CREATE TABLE organization_growy_position_roles(organization_id UUID,position_key
 		router.ServeHTTP(recorder, req)
 		return recorder
 	}
+	// Removed Telegram routes must never reach either upstream, including
+	// authenticated callers whose company still has CRM enabled.
+	for _, path := range []string{"telegram/accounts/", "telegram/accounts/12/status/", "telegram/accounts/12/auth/qr/", "telegram/accounts/12/dialogs/45/messages/"} {
+		for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodDelete} {
+			response := request(method, "/growy/api/"+path, "{}")
+			require.Equal(t, http.StatusBadRequest, response.Code, path)
+			require.Contains(t, response.Body.String(), "invalid_growy_api_path")
+		}
+	}
+	require.Zero(t, crmCalls.Load(), "removed Telegram must not contact CRM")
+	require.Zero(t, lmsCalls.Load(), "removed Telegram must not contact LMS")
 	set := func(app string, enabled bool) {
 		_, err := db.Exec(ctx, `UPDATE organization_modules SET enabled=$2 WHERE application=$1`, app, enabled)
 		require.NoError(t, err)
@@ -134,7 +145,7 @@ CREATE TABLE organization_growy_position_roles(organization_id UUID,position_key
 	require.Zero(t, lmsCalls.Load())
 	set("crm", false)
 	set("growy", true)
-	for _, path := range []string{"context/", "crm/leads/", "whatsapp/integration-status/", "telegram/accounts/1/status/", "integrations/meta/status/"} {
+	for _, path := range []string{"context/", "crm/leads/", "whatsapp/integration-status/", "integrations/meta/status/"} {
 		require.Equal(t, http.StatusForbidden, request(http.MethodGet, "/growy/api/"+path, "").Code, path)
 	}
 	require.JSONEq(t, `{"active":false}`, request(http.MethodPost, "/access-check", checkBody).Body.String())

@@ -24,7 +24,7 @@ import (
 
 var growyTrainingReadPath = regexp.MustCompile(`^users/enrollments/([0-9]+/progress-detail/)?$|^training-programs/my-unfinished/$`)
 
-var growyAPIPath = regexp.MustCompile(`^(crm|whatsapp)/[a-z0-9_/-]+(\.(csv|xlsx))?$|^integrations/meta/[a-z0-9_/-]+$|^context/$|^telegram/accounts/([0-9]+/([a-z0-9_/-]+)?)?$`)
+var growyAPIPath = regexp.MustCompile(`^(crm|whatsapp)/[a-z0-9_/-]+(\.(csv|xlsx))?$|^integrations/meta/[a-z0-9_/-]+$|^context/$`)
 
 // Growy's LMS and CRM use different API roots. Keep the LMS read allowlist
 // separate so exposing personal training data does not enable training writes.
@@ -89,7 +89,7 @@ func (connection growyAPIConnection) request(ctx context.Context, method, path, 
 	return service.NewGrowyAPIRequest(ctx, method, connection.base, path, body)
 }
 
-// ProxyGrowyAPI lets Workspace UI use CRM, WhatsApp and Telegram in the authenticated
+// ProxyGrowyAPI lets Workspace UI use CRM and WhatsApp in the authenticated
 // employee's organization. No administrator credential or client tenant ID is
 // forwarded. Current membership is validated on every call; short-lived upstream tokens
 // are reused only for the same server-resolved identity and organization.

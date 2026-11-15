@@ -40,7 +40,6 @@ type Config struct {
 	QMeet            QMeetConfig
 	GoogleCalendar   GoogleCalendarConfig
 	IDP              IDPConfig
-	TelegramGuard    TelegramGuardConfig
 	TwoSlides        TwoSlidesConfig
 	Internal         InternalConfig
 	Agent            AgentConfig
@@ -86,12 +85,6 @@ type IDPConfig struct {
 	Environment    string
 	EnableDebugAPI bool
 	RequestTimeout time.Duration
-}
-
-type TelegramGuardConfig struct {
-	BaseURL string
-	APIKey  string
-	Timeout time.Duration
 }
 
 type TwoSlidesConfig struct {
@@ -608,11 +601,6 @@ func Load() (*Config, error) {
 			Environment:    getEnv("IDP_ENV", "prod"),
 			EnableDebugAPI: getEnvAsBool("IDP_ENABLE_DEBUG_API", false),
 			RequestTimeout: getDuration("IDP_REQUEST_TIMEOUT", 15*time.Second),
-		},
-		TelegramGuard: TelegramGuardConfig{
-			BaseURL: getEnv("TELEGRAM_GUARD_BASE_URL", ""),
-			APIKey:  getEnv("TELEGRAM_GUARD_API_KEY", ""),
-			Timeout: getDuration("TELEGRAM_GUARD_TIMEOUT", 5*time.Second),
 		},
 		TwoSlides: TwoSlidesConfig{
 			BaseURL: getEnv("TWOSLIDES_BASE_URL", "https://2slides.com"),

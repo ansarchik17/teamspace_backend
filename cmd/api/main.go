@@ -30,7 +30,6 @@ import (
 	"github.com/west6ide/workspace-backend/internal/repository"
 	"github.com/west6ide/workspace-backend/internal/server"
 	"github.com/west6ide/workspace-backend/internal/service"
-	"github.com/west6ide/workspace-backend/internal/telegramguard"
 	"github.com/west6ide/workspace-backend/internal/telemetry"
 	"github.com/west6ide/workspace-backend/internal/websocket"
 	boardws "github.com/west6ide/workspace-backend/internal/whiteboard"
@@ -290,7 +289,6 @@ func main() {
 	statusService := service.NewStatusService(statusRepo, wsHub, logger)
 
 	e2eeService := service.NewE2EEService(e2eeRepo, logger)
-	telegramGuardClient := telegramguard.New(cfg.TelegramGuard.BaseURL, cfg.TelegramGuard.APIKey, cfg.TelegramGuard.Timeout, logger)
 	var mailboxProvisioner auth.MailboxProvisioner
 	if cfg.Stalwart.Enabled() {
 		mailboxProvisioner = auth.NewStalwartMailboxProvisioner(auth.StalwartProvisionerConfig{
@@ -330,7 +328,6 @@ func main() {
 		auth.WithKeyBackupService(e2eeService),
 		auth.WithKeycloakClients(kcClients),
 		auth.WithMobileClientID(cfg.Keycloak.MobileClientID),
-		auth.WithLoginMonitor(telegramGuardClient),
 		auth.WithHRProfileRepository(userHRProfileRepo),
 		auth.WithAICache(aiCache),
 		auth.WithMailboxRepository(userRepo),
@@ -432,7 +429,7 @@ func main() {
 		crypto,
 		cfg.Security.BcryptCost,
 		logger,
-	).WithLoginLogRepo(loginLogRepo).WithLoginMonitor(telegramGuardClient).WithKeycloakClients(kcClients).WithQuickPinDefaultClientID(quickPinDefaultClient).WithTokenManager(tokenManager)
+	).WithLoginLogRepo(loginLogRepo).WithKeycloakClients(kcClients).WithQuickPinDefaultClientID(quickPinDefaultClient).WithTokenManager(tokenManager)
 	publicAppService := service.NewPublicAppService(publicAppRepo, userRepo, logger)
 	notificationService.SetLiveKitTokenIssuer(liveKitService)
 

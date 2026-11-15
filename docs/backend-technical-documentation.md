@@ -211,7 +211,7 @@ Drive-роуты частично вынесены в [`internal/server/router_d
 
 Цепочка:
 
-`AuthHandler -> auth.Service / QuickPinService -> UserRepository + UserHRProfileRepository + QuickPinRepository + LoginLogRepository + TokenStorage + Keycloak + TelegramGuard`
+`AuthHandler -> auth.Service / QuickPinService -> UserRepository + UserHRProfileRepository + QuickPinRepository + LoginLogRepository + TokenStorage + Keycloak`
 
 Особенности:
 
@@ -777,17 +777,6 @@ Drive-роуты частично вынесены в [`internal/server/router_d
 - streaming;
 - embeddings;
 - rerank.
-
-### 13.4 TelegramGuard
-
-Ключевой файл:
-
-- [`internal/telegramguard/client.go`]
-
-Функции:
-
-- login block check;
-- login notification.
 
 ### 13.5 Push и почта
 

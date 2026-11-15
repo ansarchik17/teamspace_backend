@@ -9,12 +9,8 @@ import (
 	"syscall"
 	"time"
 
-	"database/sql"
-
 	"github.com/west6ide/workspace-backend/internal/apperrors"
 
-	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/pressly/goose/v3"
 	"github.com/redis/go-redis/v9"
 	agentcore "github.com/west6ide/workspace-backend/internal/agent"
 	"github.com/west6ide/workspace-backend/internal/alem"
@@ -103,36 +99,9 @@ func main() {
 	}
 	defer db.Close()
 
-	// Run migrations
-	migrationDSN := fmt.Sprintf(
-		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s timezone=UTC",
-		cfg.Database.Host, cfg.Database.Port, cfg.Database.User, cfg.Database.Password, cfg.Database.Database, cfg.Database.SSLMode,
-	)
-
-	migrationDB, err := sql.Open("pgx", migrationDSN)
-	if err != nil {
-		logger.Fatal("Failed to open database for migrations", zap.Error(err))
+	if err := runStartupMigrations(ctx, cfg.Database, logger); err != nil {
+		logger.Fatal("Failed to run database migrations", zap.Error(err))
 	}
-
-	// Check connection
-	if err := migrationDB.Ping(); err != nil {
-		logger.Fatal("Failed to ping database for migrations", zap.Error(err))
-	}
-
-	if err := goose.SetDialect("postgres"); err != nil {
-		logger.Fatal("Failed to set goose dialect", zap.Error(err))
-	}
-
-	if err := goose.Up(migrationDB, "db/migrations"); err != nil {
-		logger.Fatal("Failed to key migrations", zap.Error(err))
-	}
-
-	// Close migration connection as we don't need it anymore
-	if err := migrationDB.Close(); err != nil {
-		logger.Error("Failed to close migration connection", zap.Error(err))
-	}
-
-	logger.Info("Migrations ran successfully")
 
 	// Initialize Redis
 	var redisClient *redis.Client

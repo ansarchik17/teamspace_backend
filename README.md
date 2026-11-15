@@ -179,7 +179,13 @@ on its first run, then updates `docs/docs.go`, `docs/swagger.json` and
 `docs/swagger.yaml`. Go and network access are required for the first install;
 no global `swag` installation or PATH changes are needed.
 
-At startup the API runs all SQL migrations from [`db/migrations`](./db/migrations).
+By default, the API applies SQL migrations from [`db/migrations`](./db/migrations)
+at startup. Set `RUN_DB_MIGRATIONS=false` to use an already migrated database
+without opening a migration connection or changing the migration ledger.
+The API and `cmd/migrate` use the same enable/disable switch. If a deployment
+runs `/app/migrate` separately, enable migrations for that command and disable
+them for the API process afterward. `MIGRATIONS_DIR` overrides the SQL directory;
+its default is `db/migrations` for the API and `/app/db/migrations` for the runner.
 
 ## Email Notifications
 

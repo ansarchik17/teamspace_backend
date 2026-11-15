@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"net"
 	"net/url"
 	"os"
@@ -133,13 +132,5 @@ func envOrDefault(name, fallback string) string {
 }
 
 func migrationsEnabled(value string) bool {
-	switch strings.ToLower(strings.TrimSpace(value)) {
-	case "0", "false", "no", "off":
-		return false
-	case "", "1", "true", "yes", "on":
-		return true
-	default:
-		log.Println("unrecognized RUN_DB_MIGRATIONS value; migrations remain enabled")
-		return true
-	}
+	return config.DatabaseMigrationsEnabled(value)
 }

@@ -139,7 +139,7 @@ async function main() {
   await run('go', ['build', '-o', executable, './cmd/api'])
   if (stopping) return
   console.log(`Адрес API после завершения старта: http://localhost:${process.env.HTTP_PORT || '8080'} — /health, /ready, /swagger/index.html`)
-  console.log('При старте API применяет миграции. Ctrl+C останавливает API; данные Compose сохраняются.')
+  console.log('Миграции при старте включены по умолчанию; RUN_DB_MIGRATIONS=false отключает их. Ctrl+C останавливает API; данные Compose сохраняются.')
   console.log('После изменения Go-кода перезапустите npm run dev.')
   await run(executable, [])
 }

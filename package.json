@@ -10,6 +10,7 @@
     "dev:auth": "node scripts/dev.mjs --auth-only",
     "dev:stop": "node scripts/dev.mjs --stop",
     "dev:logs": "node scripts/dev.mjs --logs",
+    "host:mac": "node scripts/host-mac.mjs",
     "seed:director": "node scripts/seed-director.mjs",
     "seed:admin": "node scripts/seed-admin.mjs",
     "build": "go build -o bin/api ./cmd/api",

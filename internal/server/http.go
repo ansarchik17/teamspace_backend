@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -20,7 +21,7 @@ type HTTPServer struct {
 // NewHTTPServer creates a new HTTP server
 func NewHTTPServer(cfg config.HTTPConfig, router *gin.Engine, logger *zap.Logger) *HTTPServer {
 	server := &http.Server{
-		Addr:           ":" + cfg.Port,
+		Addr:           net.JoinHostPort(cfg.Host, cfg.Port),
 		Handler:        router,
 		ReadTimeout:    cfg.ReadTimeout,
 		WriteTimeout:   cfg.WriteTimeout,

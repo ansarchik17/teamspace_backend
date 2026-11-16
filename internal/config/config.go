@@ -240,6 +240,7 @@ type ExternalAdminConfig struct {
 }
 
 type HTTPConfig struct {
+	Host            string
 	Port            string
 	ReadTimeout     time.Duration
 	WriteTimeout    time.Duration
@@ -379,6 +380,7 @@ func Load() (*Config, error) {
 		},
 		TenantBaseDomain: strings.ToLower(strings.TrimSpace(getEnv("TENANT_BASE_DOMAIN", "teamspace.kz"))),
 		HTTP: HTTPConfig{
+			Host:            getEnv("HTTP_HOST", ""),
 			Port:            getEnv("HTTP_PORT", "8080"),
 			ReadTimeout:     getDuration("HTTP_READ_TIMEOUT", 120*time.Second),
 			WriteTimeout:    getDuration("HTTP_WRITE_TIMEOUT", 120*time.Second),

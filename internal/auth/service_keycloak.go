@@ -1789,7 +1789,7 @@ type CreateUserRequest struct {
 	Role                string     `json:"role"`
 	Position            string     `json:"position"`
 	OrganizationID      *uuid.UUID `json:"organization_id,omitempty"`
-	// Required when creating an employee in an organization.
+	// Optional; when provided, the subdivision must belong to the organization.
 	TeamID                   *uuid.UUID `json:"team_id,omitempty"`
 	ManagerID                *int64     `json:"manager_id,omitempty"`
 	CanViewFullDriveActivity bool       `json:"can_view_full_drive_activity"`
@@ -2495,7 +2495,7 @@ func (s *Service) validateUserOrganizationAssignment(ctx context.Context, req *C
 		return apperrors.Validation("organization_id must be a non-zero UUID")
 	}
 	if req.TeamID == nil {
-		return apperrors.Validation("team_id is required when creating an employee in an organization")
+		return nil
 	}
 	validator, ok := s.userRepo.(organizationTeamValidator)
 	if !ok {

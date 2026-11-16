@@ -42,7 +42,7 @@ func (r *createUserTeamRepository) CreateNewUser(_ context.Context, user *domain
 	return nil
 }
 
-func TestScopedUserCreateRequiresOrganizationTeam(t *testing.T) {
+func TestScopedUserCreateValidatesOptionalOrganizationTeam(t *testing.T) {
 	companyID, teamID, otherCompanyID := uuid.New(), uuid.New(), uuid.New()
 	for _, tc := range []struct {
 		name       string
@@ -52,14 +52,15 @@ func TestScopedUserCreateRequiresOrganizationTeam(t *testing.T) {
 		teamError  error
 		wantStatus int
 	}{
-		{name: "director without team", wantStatus: http.StatusBadRequest},
+		{name: "director without team"},
 		{name: "director with zero team", team: &uuid.Nil, wantStatus: http.StatusBadRequest},
 		{name: "director with valid team", team: &teamID},
 		{name: "foreign team", team: &teamID, teamError: errors.New("team belongs to another company"), wantStatus: http.StatusBadRequest},
 		{name: "archived team", team: &teamID, teamError: errors.New("team not found"), wantStatus: http.StatusBadRequest},
 		{name: "foreign company", company: &otherCompanyID, team: &teamID, wantStatus: http.StatusForbidden},
+		{name: "foreign company without team", company: &otherCompanyID, wantStatus: http.StatusForbidden},
 		{name: "platform account without company", global: true},
-		{name: "platform creates employee without team", global: true, company: &companyID, wantStatus: http.StatusBadRequest},
+		{name: "platform creates employee without team", global: true, company: &companyID},
 		{name: "platform creates employee with team", global: true, company: &companyID, team: &teamID},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -82,19 +83,21 @@ func TestScopedUserCreateRequiresOrganizationTeam(t *testing.T) {
 			require.NoError(t, err)
 			if request.OrganizationID != nil {
 				require.Equal(t, companyID, *request.OrganizationID)
+			}
+			if request.TeamID != nil {
 				require.Equal(t, companyID, repo.validatedCompany)
 				require.Equal(t, teamID, repo.validatedTeam)
 				require.Equal(t, 1, repo.teamValidationRuns)
+			} else {
+				require.Zero(t, repo.teamValidationRuns)
 			}
 		})
 	}
 }
 
-func TestCreateUserRejectsMissingTeamBeforeKeycloak(t *testing.T) {
+func TestCreateUserRejectsInvalidOrganizationAssignmentBeforeKeycloak(t *testing.T) {
 	companyID, teamID := uuid.New(), uuid.New()
 	for _, body := range []string{
-		`{"organization_id":"` + companyID.String() + `"}`,
-		`{"organization_id":"` + companyID.String() + `","team_id":null}`,
 		`{"organization_id":"` + companyID.String() + `","team_id":"` + uuid.Nil.String() + `"}`,
 		`{"organization_id":"` + uuid.Nil.String() + `","team_id":"` + teamID.String() + `"}`,
 		`{"team_id":"` + teamID.String() + `"}`,
@@ -125,37 +128,62 @@ func TestCreateUserRejectsUnavailableTeamBeforeKeycloak(t *testing.T) {
 	require.Nil(t, repo.created)
 }
 
-func TestCreateUserPreservesSelectedTeam(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodPost && r.URL.Path == "/realms/master/protocol/openid-connect/token":
-			_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "test-admin", "expires_in": 300})
-		case r.Method == http.MethodPost && r.URL.Path == "/admin/realms/test/users":
-			w.Header().Set("Location", "/admin/realms/test/users/new-employee")
-			w.WriteHeader(http.StatusCreated)
-		case r.Method == http.MethodPut && strings.HasSuffix(r.URL.Path, "/reset-password"):
-			w.WriteHeader(http.StatusNoContent)
-		case r.Method == http.MethodGet && r.URL.Path == "/admin/realms/test/roles/user":
-			_ = json.NewEncoder(w).Encode(map[string]any{"id": "user-role", "name": "user"})
-		case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/role-mappings/realm"):
-			w.WriteHeader(http.StatusNoContent)
-		default:
-			t.Errorf("unexpected Keycloak request: %s %s", r.Method, r.URL.Path)
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
-	defer server.Close()
-	companyID, teamID := uuid.New(), uuid.New()
-	repo := &createUserTeamRepository{}
-	service := NewKeycloakService(repo, nil, nil, nil, keycloak.NewAdmin(server.URL, "master", "test", "test"), "test")
-	result, err := service.CreateUser(context.Background(), 1, &CreateUserRequest{
-		Email: "employee@example.invalid", Username: "new.employee", Password: "synthetic-password", IIN: "123456789012",
-		FirstName: "New", LastName: "Employee", OrganizationID: &companyID, TeamID: &teamID,
-	})
-	require.NoError(t, err)
-	require.NotNil(t, repo.created)
-	require.Equal(t, teamID, *repo.created.TeamID)
-	require.Equal(t, companyID, *repo.created.OrganizationID)
-	require.Equal(t, teamID, *result.TeamID)
-	require.Equal(t, domain.RoleUser, result.Role)
+func TestCreateUserPreservesOptionalTeam(t *testing.T) {
+	for _, assignment := range []string{"omitted", "null", "selected"} {
+		t.Run(assignment, func(t *testing.T) {
+			companyID, teamID := uuid.New(), uuid.New()
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch {
+				case r.Method == http.MethodPost && r.URL.Path == "/realms/master/protocol/openid-connect/token":
+					_ = json.NewEncoder(w).Encode(map[string]any{"access_token": "test-admin", "expires_in": 300})
+				case r.Method == http.MethodPost && r.URL.Path == "/admin/realms/test/users":
+					var identity keycloak.CreateUserRequest
+					require.NoError(t, json.NewDecoder(r.Body).Decode(&identity))
+					if assignment == "selected" {
+						require.Equal(t, []string{teamID.String()}, identity.Attributes["team_id"])
+					} else {
+						require.NotContains(t, identity.Attributes, "team_id")
+					}
+					w.Header().Set("Location", "/admin/realms/test/users/new-employee")
+					w.WriteHeader(http.StatusCreated)
+				case r.Method == http.MethodPut && strings.HasSuffix(r.URL.Path, "/reset-password"):
+					w.WriteHeader(http.StatusNoContent)
+				case r.Method == http.MethodGet && r.URL.Path == "/admin/realms/test/roles/user":
+					_ = json.NewEncoder(w).Encode(map[string]any{"id": "user-role", "name": "user"})
+				case r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/role-mappings/realm"):
+					w.WriteHeader(http.StatusNoContent)
+				default:
+					t.Errorf("unexpected Keycloak request: %s %s", r.Method, r.URL.Path)
+					w.WriteHeader(http.StatusNotFound)
+				}
+			}))
+			defer server.Close()
+			repo := &createUserTeamRepository{}
+			service := NewKeycloakService(repo, nil, nil, nil, keycloak.NewAdmin(server.URL, "master", "test", "test"), "test")
+			data := map[string]any{"email": "employee@example.invalid", "username": "new.employee", "password": "synthetic-password", "iin": "123456789012", "first_name": "New", "last_name": "Employee", "organization_id": companyID.String()}
+			if assignment == "selected" {
+				data["team_id"] = teamID.String()
+			} else if assignment == "null" {
+				data["team_id"] = nil
+			}
+			encoded, err := json.Marshal(data)
+			require.NoError(t, err)
+			var request CreateUserRequest
+			require.NoError(t, json.Unmarshal(encoded, &request))
+			result, err := service.CreateUser(context.Background(), 1, &request)
+			require.NoError(t, err)
+			require.NotNil(t, repo.created)
+			require.Equal(t, companyID, *repo.created.OrganizationID)
+			if assignment == "selected" {
+				require.Equal(t, teamID, *repo.created.TeamID)
+				require.Equal(t, teamID, *result.TeamID)
+				require.Equal(t, 1, repo.teamValidationRuns)
+			} else {
+				require.Nil(t, repo.created.TeamID)
+				require.Nil(t, result.TeamID)
+				require.Zero(t, repo.teamValidationRuns)
+			}
+			require.Equal(t, domain.RoleUser, result.Role)
+		})
+	}
 }

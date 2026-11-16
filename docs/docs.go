@@ -23314,7 +23314,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "team_id": {
-                    "description": "Required when creating an employee in an organization.",
+                    "description": "Optional; when provided, the subdivision must belong to the organization.",
                     "type": "string"
                 },
                 "username": {

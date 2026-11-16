@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/west6ide/workspace-backend/internal/apperrors"
 	"github.com/west6ide/workspace-backend/internal/domain"
 	"github.com/west6ide/workspace-backend/internal/keycloak"
 )
@@ -15,6 +16,17 @@ import (
 type iformProvisionRetryRepo struct {
 	iformOperationUserRepo
 	creates int
+}
+
+func TestIFormAdmissionStillRequiresSubdivision(t *testing.T) {
+	start := "2026-11-16"
+	manager := int64(2)
+	_, err := (&Service{}).ProvisionIFormEmployee(context.Background(), 1, uuid.New(), uuid.New(), &CreateUserRequest{
+		FirstName: "New", LastName: "Hire", Email: "hire@example.invalid", IIN: "123456789012", Position: "Engineer", ManagerID: &manager, StartDate: &start,
+	})
+	if err == nil || apperrors.ToAppError(err).StatusCode != http.StatusBadRequest {
+		t.Fatalf("typed admission must reject a missing subdivision before provisioning: %v", err)
+	}
 }
 
 func (r *iformProvisionRetryRepo) CheckNewUserIdentity(context.Context, string, string, string) error {

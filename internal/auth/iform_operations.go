@@ -57,6 +57,11 @@ func (s *Service) ProvisionIFormEmployee(ctx context.Context, actor int64, compa
 	if req.StartDate == nil || !domain.ValidEmploymentDate(*req.StartDate) {
 		return nil, apperrors.New("EMPLOYMENT_DATE_INVALID", "employment start date is required", 400)
 	}
+	// The typed admission workflow has its own complete employment schema;
+	// ordinary account creation may leave the subdivision unassigned.
+	if req.TeamID == nil {
+		return nil, apperrors.Validation("Подразделение обязательно для кадрового приёма через iForm")
+	}
 	req.employmentAdmission = &domain.EmploymentAdmission{OrganizationID: company, RequestID: requestID, ActorID: actor, StartDate: req.StartDate}
 	req.Role = string(domain.RoleUser)
 	req.Username = "onb." + strings.ReplaceAll(requestID.String(), "-", "")

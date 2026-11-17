@@ -39,6 +39,16 @@ Referer, Cookie, Host or Authorization. The destination stays fixed in server
 configuration, and upstream tokens retain the user's existing role and company.
 Only allowlisted training GETs are enabled; this change grants no management roles.
 
+The authenticated proxy separates Workspace authentication from Growy authentication.
+A 401 from the Growy ticket exchange or business API is returned as HTTP 502, with
+the existing public error code and sanitized message. This applies to both LMS and
+CRM connections: a rejected server-managed Growy credential must not trigger
+Workspace token refresh or logout. Missing Workspace identity still returns 401;
+local company/module denial and upstream 403/409 retain their existing statuses.
+Upstream 401/403 still invalidate the cached Growy credential. Requests, including
+CRM mutations, are not replayed automatically by the backend. No new settings or
+database migrations are required.
+
 Deploy Workspace backend with the existing CRM settings intact. Then compare both
 personal training reads through Workspace against ordinary direct LMS login for
 each role. Also check CRM access, unsupported training writes, unauthenticated

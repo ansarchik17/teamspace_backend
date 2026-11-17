@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/west6ide/workspace-backend/internal/domain"
 	"github.com/west6ide/workspace-backend/internal/middleware"
 	"github.com/west6ide/workspace-backend/internal/service"
@@ -89,11 +90,32 @@ func (connection growyAPIConnection) request(ctx context.Context, method, path, 
 	return service.NewGrowyAPIRequest(ctx, method, connection.base, path, body)
 }
 
+type growyProxyService interface {
+	GrowyHandoffDetails(context.Context, int64) (*domain.GrowyHandoffDetails, error)
+	GrowyCRMHandoffDetails(context.Context, int64) (*domain.GrowyHandoffDetails, error)
+	ProvisionGrowyLMSTenant(context.Context, uuid.UUID, string, string, string) error
+	ProvisionGrowyTenant(context.Context, uuid.UUID, string, string) error
+}
+
+// Workspace authenticates the caller before contacting Growy. An upstream 401
+// rejects the server-managed Growy credential, not the caller's Workspace
+// session; exposing it as a local 401 would trigger Workspace refresh/logout.
+func growyUpstreamStatus(status int) int {
+	if status == http.StatusUnauthorized {
+		return http.StatusBadGateway
+	}
+	return status
+}
+
 // ProxyGrowyAPI lets Workspace UI use CRM and WhatsApp in the authenticated
 // employee's organization. No administrator credential or client tenant ID is
 // forwarded. Current membership is validated on every call; short-lived upstream tokens
 // are reused only for the same server-resolved identity and organization.
 func (h *OrganizationHandler) ProxyGrowyAPI(c *gin.Context) {
+	h.proxyGrowyAPI(c, h.service)
+}
+
+func (h *OrganizationHandler) proxyGrowyAPI(c *gin.Context, svc growyProxyService) {
 	startedAt := time.Now()
 	path := strings.TrimPrefix(c.Param("path"), "/")
 	upstreamPath, allowed := growyAPIUpstreamPath(c.Request.Method, path)
@@ -119,9 +141,9 @@ func (h *OrganizationHandler) ProxyGrowyAPI(c *gin.Context) {
 	}
 	var details *domain.GrowyHandoffDetails
 	if connection.lms {
-		details, err = h.service.GrowyHandoffDetails(c.Request.Context(), claims.UserID)
+		details, err = svc.GrowyHandoffDetails(c.Request.Context(), claims.UserID)
 	} else {
-		details, err = h.service.GrowyCRMHandoffDetails(c.Request.Context(), claims.UserID)
+		details, err = svc.GrowyCRMHandoffDetails(c.Request.Context(), claims.UserID)
 	}
 	if err != nil {
 		respondJSON(c, http.StatusForbidden, gin.H{"code": "growy_company_access_unavailable"})
@@ -135,9 +157,9 @@ func (h *OrganizationHandler) ProxyGrowyAPI(c *gin.Context) {
 	access, cacheHit, sessionErr := h.growySessions.get(c.Request.Context(), key, func() (string, time.Time, error) {
 		started := time.Now()
 		if connection.lms {
-			err = h.service.ProvisionGrowyLMSTenant(c.Request.Context(), details.OrganizationID, details.OrganizationName, details.OrganizationSlug, connection.base)
+			err = svc.ProvisionGrowyLMSTenant(c.Request.Context(), details.OrganizationID, details.OrganizationName, details.OrganizationSlug, connection.base)
 		} else {
-			err = h.service.ProvisionGrowyTenant(c.Request.Context(), details.OrganizationID, details.OrganizationName, details.OrganizationSlug)
+			err = svc.ProvisionGrowyTenant(c.Request.Context(), details.OrganizationID, details.OrganizationName, details.OrganizationSlug)
 		}
 		if err != nil {
 			h.logger.Warn("Growy API tenant provisioning failed", zap.Error(err), zap.String("organization_id", details.OrganizationID.String()))
@@ -168,7 +190,7 @@ func (h *OrganizationHandler) ProxyGrowyAPI(c *gin.Context) {
 			// Do not relay tokens, authentication error bodies or private upstream data.
 			status := http.StatusBadGateway
 			if response.StatusCode == http.StatusUnauthorized || response.StatusCode == http.StatusForbidden || response.StatusCode == http.StatusConflict {
-				status = response.StatusCode
+				status = growyUpstreamStatus(response.StatusCode)
 			}
 			return "", time.Time{}, &growySessionError{status, "growy_exchange_failed"}
 		}
@@ -224,7 +246,7 @@ func (h *OrganizationHandler) ProxyGrowyAPI(c *gin.Context) {
 	defer response.Body.Close()
 	c.Header("Cache-Control", "no-store, private")
 	if response.StatusCode >= 400 {
-		respondUpstreamError(c, response.StatusCode, response.Body)
+		respondUpstreamError(c, growyUpstreamStatus(response.StatusCode), response.Body)
 		return
 	}
 	// Fixed upstream and validated paths; no incoming cookies/auth/host headers.
